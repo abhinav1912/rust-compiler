@@ -1,32 +1,32 @@
 #[allow(dead_code)]
-mod token {
-    const ILLEGAL: &str = "ILLEGAL";
-    const EOF: &str = "EOF";
+pub mod token {
+    pub const ILLEGAL: &str = "ILLEGAL";
+    pub const EOF: &str = "EOF";
 
     // Identifiers + literals
-    const IDENT: &str = "IDENT";
-    const INT: &str = "INT";
+    pub const IDENT: &str = "IDENT";
+    pub const INT: &str = "INT";
 
     // Operators
-    const ASSIGN: &str = "=";
-    const PLUS: &str = "+";
+    pub const ASSIGN: &str = "=";
+    pub const PLUS: &str = "+";
 
     // Delimiters
-    const COMMA: &str = ",";
-    const SEMICOLON: &str = ";";
-    const LPAREN: &str = "(";
-    const RPAREN: &str = ")";
-    const LBRACE: &str = "{";
-    const RBRACE: &str = "}";
+    pub const COMMA: &str = ",";
+    pub const SEMICOLON: &str = ";";
+    pub const LPAREN: &str = "(";
+    pub const RPAREN: &str = ")";
+    pub const LBRACE: &str = "{";
+    pub const RBRACE: &str = "}";
 
     // Keywords
-    const FUNCTION: &str = "FUNCTION";
-    const LET: &str = "LET";
+    pub const FUNCTION: &str = "FUNCTION";
+    pub const LET: &str = "LET";
 
-    type TokenType = String;
+    pub type TokenType = String;
 
-    struct Token {
-        token_type: TokenType,
-        literal: String
+    pub struct Token {
+        pub token_type: TokenType,
+        pub literal: String
     }
 }
