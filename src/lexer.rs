@@ -21,6 +21,7 @@ impl Lexer {
 
     fn next_token(&mut self) -> token::Token {
         // parses next character and returns token
+        self.skip_whitespace();
         let return_token: token::Token;
         match self.ch {
             '=' => return_token = Token::Assign,
@@ -52,7 +53,7 @@ impl Lexer {
         while is_letter(self.ch) {
             self.read_char()
         }
-        &self.input[self.position..position]
+        &self.input[position..self.position]
     }
 
     fn read_digit(&mut self) -> &str {
