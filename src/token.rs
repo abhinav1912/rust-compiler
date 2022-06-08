@@ -92,3 +92,20 @@ impl fmt::Display for Token {
         }
     }
 }
+
+pub fn lookup_identifier(identifier: &str) -> Token {
+    return keyword_to_token(identifier).unwrap_or_else(|| Token::Ident(identifier.to_owned()));
+}
+
+fn keyword_to_token(keyword: &str) -> Option<Token> {
+    match keyword {
+        "fn" => Some(Token::Function),
+        "let" => Some(Token::Let),
+        "true" => Some(Token::True),
+        "false" => Some(Token::False),
+        "if" => Some(Token::If),
+        "else" => Some(Token::Else),
+        "return" => Some(Token::Return),
+        _ => None,
+    }
+}
