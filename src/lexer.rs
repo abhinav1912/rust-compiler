@@ -1,53 +1,71 @@
-mod lexer {
-    use std::{convert::TryInto, char::from_digit};
+use std::{convert::TryInto, char::from_digit, iter::Peekable, str::Chars, mem};
+use crate::token::{self, Token};
 
-    use crate::token::*;
+pub struct Lexer {
+    input: String,
+    position: usize,
+    ch: char,
+    chars: Peekable<Chars<'static>>
+}
 
-    #[derive(Default)]
-    struct Lexer {
-        input: String,
-        position: u32,
-        read_position: u32,
-        ch: char
+impl Lexer {
+    fn read_char(&mut self) {
+        // reads next character and advances position in the string
+        self.position += if self.ch == '\u{0}' {
+            0
+        } else {
+            self.ch.len_utf8()
+        };
+        self.ch = self.chars.next().unwrap_or('\u{0}');
     }
 
-    impl Lexer {
-        fn read_char(&mut self) {
-            // reads next character and advances position in the string
-            if self.read_position >= self.input.len().try_into().unwrap() {
-                self.ch = from_digit(0, 10).unwrap();
-            } else {
-                self.ch = self.input.chars().nth(self.read_position as usize).unwrap();
+    fn next_token(&mut self) -> token::Token {
+        // parses next character and returns token
+        let return_token: token::Token;
+        match self.ch {
+            '=' => return_token = Token::Assign,
+            ';' => return_token = Token::Semicolon,
+            '(' => return_token = Token::Lparen,
+            ')' => return_token = Token::Rparen,
+            ',' => return_token = Token::Comma,
+            '+' => return_token = Token::Plus,
+            '{' => return_token = Token::Lbrace,
+            '}' => return_token = Token::Rbrace,
+            '\u{0}' => return_token = Token::Eof,
+            _ => {
+                if is_letter(self.ch) {
+                    return_token = token::lookup_identifier(self.read_identifier());
+                } else {
+                    return_token = Token::Illegal;
+                }
             }
-            self.position = self.read_position;
-            self.read_position += 1;
         }
+        self.read_char();
+        return_token
+    }
 
-        fn next_token(&mut self) -> token::Token {
-            let return_token: token::Token;
-            match self.ch {
-                '=' => return_token = new_token(token::ASSIGN.to_string(), self.ch),
-                ';' => return_token = new_token(token::SEMICOLON.to_string(), self.ch),
-                '(' => return_token = new_token(token::LPAREN.to_string(), self.ch),
-                ')' => return_token = new_token(token::RPAREN.to_string(), self.ch),
-                ',' => return_token = new_token(token::COMMA.to_string(), self.ch),
-                '+' => return_token = new_token(token::PLUS.to_string(), self.ch),
-                '{' => return_token = new_token(token::LBRACE.to_string(), self.ch),
-                '}' => return_token = new_token(token::RBRACE.to_string(), self.ch),
-                _ => return_token = new_token(token::EOF.to_string(), '\u{0}')
-            }
-            self.read_char();
-            return return_token;
+    fn read_identifier(&mut self) -> &str {
+        // returns identifier for current block of characters
+        let position = self.position;
+        while is_letter(self.ch) {
+            self.read_char()
         }
+        &self.input[self.position..position]
     }
+}
 
-    fn new_lexer(input: String) -> Lexer {
-        let mut lexer = Lexer { input: (input), ..Default::default() };
-        lexer.read_char();
-        return lexer; 
-    }
+pub fn new_lexer(input: String) -> Lexer {
+    let chars = unsafe { mem::transmute(input.chars().peekable()) };
+    let mut lexer = Lexer { 
+        input,
+        position: 0,
+        ch: '\u{0}',
+        chars
+     };
+    lexer.read_char();
+    lexer 
+}
 
-    fn new_token(token_type: token::TokenType, ch: char) -> token::Token {
-        return token::Token{ token_type, literal: ch.to_string() }
-    }
+fn is_letter(ch: char) -> bool {
+    ch.is_ascii_alphabetic() || ch == '_'
 }
