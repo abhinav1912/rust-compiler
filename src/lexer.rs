@@ -52,6 +52,12 @@ impl Lexer {
         }
         &self.input[self.position..position]
     }
+
+    fn skip_whitespace(&mut self) {
+        while is_whitespace(self.ch) {
+            self.read_char();
+        } 
+    }
 }
 
 pub fn new_lexer(input: String) -> Lexer {
@@ -68,4 +74,8 @@ pub fn new_lexer(input: String) -> Lexer {
 
 fn is_letter(ch: char) -> bool {
     ch.is_ascii_alphabetic() || ch == '_'
+}
+
+fn is_whitespace(ch: char) -> bool {
+    ch == ' ' || ch == '\n' || ch == '\t' || ch == '\r'
 }
