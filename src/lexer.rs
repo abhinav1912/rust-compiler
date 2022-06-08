@@ -35,6 +35,8 @@ impl Lexer {
             _ => {
                 if is_letter(self.ch) {
                     return_token = token::lookup_identifier(self.read_identifier());
+                } else if is_digit(self.ch) {
+                    return_token = Token::Int(self.read_digit().to_string());
                 } else {
                     return_token = Token::Illegal;
                 }
@@ -51,6 +53,14 @@ impl Lexer {
             self.read_char()
         }
         &self.input[self.position..position]
+    }
+
+    fn read_digit(&mut self) -> &str {
+        let position: usize = self.position;
+        while is_digit(self.ch) {
+            self.read_char()
+        }
+        &self.input[position..self.position]
     }
 
     fn skip_whitespace(&mut self) {
@@ -74,6 +84,10 @@ pub fn new_lexer(input: String) -> Lexer {
 
 fn is_letter(ch: char) -> bool {
     ch.is_ascii_alphabetic() || ch == '_'
+}
+
+fn is_digit(ch: char) -> bool {
+    ch.is_ascii_digit()
 }
 
 fn is_whitespace(ch: char) -> bool {
