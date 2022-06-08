@@ -24,15 +24,73 @@ impl Lexer {
         self.skip_whitespace();
         let return_token: token::Token;
         match self.ch {
-            '=' => return_token = Token::Assign,
-            ';' => return_token = Token::Semicolon,
-            '(' => return_token = Token::Lparen,
-            ')' => return_token = Token::Rparen,
-            ',' => return_token = Token::Comma,
-            '+' => return_token = Token::Plus,
-            '{' => return_token = Token::Lbrace,
-            '}' => return_token = Token::Rbrace,
-            '\u{0}' => return_token = Token::Eof,
+            '=' => {
+                if self.peek_char() == '=' {
+                    self.read_char();
+                    return_token = Token::Eq;
+                } else {
+                    return_token = Token::Assign;
+                }
+            }
+            ':' => {
+                return_token = Token::Colon;
+            }
+            ';' => {
+                return_token = Token::Semicolon;
+            }
+            '(' => {
+                return_token = Token::Lparen;
+            }
+            ')' => {
+                return_token = Token::Rparen;
+            }
+            ',' => {
+                return_token = Token::Comma;
+            }
+            '+' => {
+                return_token = Token::Plus;
+            }
+            '-' => {
+                return_token = Token::Minus;
+            }
+            '!' => {
+                if self.peek_char() == '=' {
+                    self.read_char();
+                    return_token = Token::NotEq;
+                } else {
+                    return_token = Token::Bang;
+                }
+            }
+            '*' => {
+                return_token = Token::Asterisk;
+            }
+            '/' => {
+                return_token = Token::Slash;
+            }
+            '<' => {
+                return_token = Token::Lt;
+            }
+            '>' => {
+                return_token = Token::Gt;
+            }
+            '{' => {
+                return_token = Token::Lbrace;
+            }
+            '}' => {
+                return_token = Token::Rbrace;
+            }
+            '[' => {
+                return_token = Token::Lbracket;
+            }
+            ']' => {
+                return_token = Token::Rbracket;
+            }
+            '"' => {
+                return_token = Token::String(self.read_string().to_string());
+            }
+            '\u{0}' => {
+                return_token = Token::Eof;
+            }
             _ => {
                 if is_letter(self.ch) {
                     return_token = token::lookup_identifier(self.read_identifier());
@@ -62,6 +120,21 @@ impl Lexer {
             self.read_char()
         }
         &self.input[position..self.position]
+    }
+
+    fn read_string(&mut self) -> &str {
+        let position = self.position + 1;
+        loop {
+            self.read_char();
+            if self.ch == '"' || self.ch == '\u{0}' {
+                break;
+            }
+        }
+        &self.input[position..self.position]
+    }
+
+    fn peek_char(&mut self) -> char {
+        self.chars.peek().cloned().unwrap_or('\u{0}')
     }
 
     fn skip_whitespace(&mut self) {
