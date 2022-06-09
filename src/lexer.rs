@@ -174,27 +174,11 @@ impl Lexer {
     }
 }
 
-pub fn new_lexer(input: String) -> Lexer {
-    let chars = unsafe { mem::transmute(input.chars().peekable()) };
-    let mut lexer = Lexer { 
-        input,
-        position: 0,
-        ch: '\u{0}',
-        chars
-     };
-    lexer.read_char();
-    lexer 
-}
-
 fn is_letter(ch: char) -> bool {
-    // ch.is_ascii_alphabetic() || ch == '_'
     ch == '_'
         || ch == '$'
-        // `is_alphabetic` includes kanji but not emoji.
         || ch.is_alphabetic()
-        // A rough emoji range
-        // TODO: Review https://unicode.org/Public/emoji/12.0/emoji-data.txt
-        // TODO: What to do with modifiers?
+        // emoji support
         || ('\u{203C}' <= ch && ch <= '\u{3299}')
         || ('\u{1F000}' <= ch && ch <= '\u{1FA95}')
 }
