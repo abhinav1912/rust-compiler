@@ -1,4 +1,4 @@
-use std::{convert::TryInto, char::from_digit, iter::Peekable, str::Chars, mem};
+use std::{iter::Peekable, str::Chars, mem};
 use crate::token::{self, Token};
 
 pub struct Lexer {
@@ -9,17 +9,23 @@ pub struct Lexer {
 }
 
 impl Lexer {
-    fn read_char(&mut self) {
-        // reads next character and advances position in the string
-        self.position += if self.ch == '\u{0}' {
-            0
-        } else {
-            self.ch.len_utf8()
+    pub fn new(input: String) -> Self {
+        let chars = unsafe { mem::transmute(input.chars().peekable()) };
+        let mut lexer = Lexer {
+            input,
+            position: 0,
+            ch: '\u{0}',
+            chars,
         };
-        self.ch = self.chars.next().unwrap_or('\u{0}');
+        lexer.read_char();
+        lexer
     }
 
-    fn next_token(&mut self) -> token::Token {
+    pub fn input(&self) -> &str {
+        &self.input
+    }
+
+    pub fn next_token(&mut self) -> token::Token {
         // parses next character and returns token
         self.skip_whitespace();
         let return_token: token::Token;
@@ -94,8 +100,17 @@ impl Lexer {
             _ => {
                 if is_letter(self.ch) {
                     return_token = token::lookup_identifier(self.read_identifier());
+                    return return_token;
                 } else if is_digit(self.ch) {
-                    return_token = Token::Int(self.read_digit().to_string());
+                    let integer_part = self.read_digit().to_string();
+                    if self.ch == '.' && is_digit(self.peek_char()) {
+                        self.read_char();
+                        let decimal_part = self.read_digit();
+                        return_token = Token::Float(format!("{}.{}", integer_part, decimal_part));
+                    } else {
+                        return_token = Token::Int(integer_part);
+                    }
+                    return return_token;
                 } else {
                     return_token = Token::Illegal;
                 }
@@ -108,8 +123,13 @@ impl Lexer {
     fn read_identifier(&mut self) -> &str {
         // returns identifier for current block of characters
         let position = self.position;
-        while is_letter(self.ch) {
-            self.read_char()
+        // The first character needs to be a letter.
+        if is_letter(self.ch) {
+            self.read_char();
+        }
+        // The second character and after can be a letter or a digit.
+        while is_letter(self.ch) || is_digit(self.ch) {
+            self.read_char();
         }
         &self.input[position..self.position]
     }
@@ -117,7 +137,7 @@ impl Lexer {
     fn read_digit(&mut self) -> &str {
         let position: usize = self.position;
         while is_digit(self.ch) {
-            self.read_char()
+            self.read_char();
         }
         &self.input[position..self.position]
     }
@@ -133,14 +153,24 @@ impl Lexer {
         &self.input[position..self.position]
     }
 
-    fn peek_char(&mut self) -> char {
-        self.chars.peek().cloned().unwrap_or('\u{0}')
-    }
-
     fn skip_whitespace(&mut self) {
         while is_whitespace(self.ch) {
             self.read_char();
         } 
+    }
+
+    fn read_char(&mut self) {
+        // reads next character and advances position in the string
+        self.position += if self.ch == '\u{0}' {
+            0
+        } else {
+            self.ch.len_utf8()
+        };
+        self.ch = self.chars.next().unwrap_or('\u{0}');
+    }
+
+    fn peek_char(&mut self) -> char {
+        self.chars.peek().cloned().unwrap_or('\u{0}')
     }
 }
 
@@ -157,7 +187,16 @@ pub fn new_lexer(input: String) -> Lexer {
 }
 
 fn is_letter(ch: char) -> bool {
-    ch.is_ascii_alphabetic() || ch == '_'
+    // ch.is_ascii_alphabetic() || ch == '_'
+    ch == '_'
+        || ch == '$'
+        // `is_alphabetic` includes kanji but not emoji.
+        || ch.is_alphabetic()
+        // A rough emoji range
+        // TODO: Review https://unicode.org/Public/emoji/12.0/emoji-data.txt
+        // TODO: What to do with modifiers?
+        || ('\u{203C}' <= ch && ch <= '\u{3299}')
+        || ('\u{1F000}' <= ch && ch <= '\u{1FA95}')
 }
 
 fn is_digit(ch: char) -> bool {
