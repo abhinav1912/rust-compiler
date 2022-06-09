@@ -1,6 +1,8 @@
 mod token;
 mod lexer;
+mod repl;
 
 fn main() {
-    println!("Hello, world!");
+    println!("Welcome to the compiler!");
+    repl::start();
 }
