@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, Vec};
 
 pub enum Expression {
     Identifier(String)
@@ -7,4 +7,8 @@ pub enum Expression {
 pub enum Statement {
     Let(String, Expression),
     Expression(Expression)
+}
+
+pub struct Program {
+    pub statements: Vec<Statement>
 }
