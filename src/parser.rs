@@ -29,3 +29,34 @@ impl Parser {
         Program { statements }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::iter::Enumerate;
+
+    use crate::ast::{Statement, Expression};
+    use crate::lexer::Lexer;
+    use crate::parser::Parser;
+    #[test]
+    fn let_statement() {
+        let input = "
+        let x = 5;
+        let y = 10;
+        let foo = 155;
+        ";
+        let mut lexer = Lexer::new(input.to_string().to_owned());
+        let mut parser = Parser::new_parser(lexer);
+        let program = parser.parse_program();
+        if program.statements.len() != 3 {
+            panic!("program doesn't contain 3 statements")
+        }
+        assert_eq!(
+            program.statements,
+            vec![
+                Statement::Let("x".to_string(), Expression::IntegerLiteral(5)),
+                Statement::Let("y".to_string(), Expression::IntegerLiteral(10)),
+                Statement::Let("foo".to_string(), Expression::IntegerLiteral(155))
+            ]
+        )
+    }
+}
