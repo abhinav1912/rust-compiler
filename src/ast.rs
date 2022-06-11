@@ -1,4 +1,4 @@
-use std::{fmt, Vec};
+use std::{fmt, vec};
 
 pub enum Expression {
     Identifier(String)
