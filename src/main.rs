@@ -1,7 +1,4 @@
-mod token;
-mod lexer;
-mod repl;
-mod parser;
+use rust_compiler::repl;
 
 fn main() {
     println!("Welcome to the compiler!");
