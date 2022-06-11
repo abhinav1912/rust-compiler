@@ -1,7 +1,8 @@
 use std::{fmt, vec};
 
 pub enum Expression {
-    Identifier(String)
+    Identifier(String),
+    IntegerLiteral(i64)
 }
 
 pub enum Statement {
