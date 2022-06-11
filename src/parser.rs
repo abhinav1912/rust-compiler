@@ -24,7 +24,8 @@ impl Parser {
         self.curr_token = mem::replace(&mut self.peek_token, self.lexer.next_token());
     }
 
-    pub fn parse_program() -> Option<Program> {
-        return None;
+    pub fn parse_program(&self) -> Program {
+        let mut statements = vec![];
+        Program { statements }
     }
 }
