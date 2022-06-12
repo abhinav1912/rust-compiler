@@ -31,7 +31,11 @@ impl Parser {
     pub fn parse_program(&self) -> Program {
         let mut statements = vec![];
         while self.curr_token != Token::Eof {
-            let statement = self.parse_statement();
+            let parse_result = self.parse_statement();
+            match parse_result {
+                Ok(statement) => statements.push(statement),
+                Err(e) => println!("{}", e)
+            }
         }
         Program { statements }
     }
