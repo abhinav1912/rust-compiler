@@ -1,6 +1,6 @@
 use crate::lexer::Lexer;
 use crate::token::Token;
-use crate::ast::{Program, Statement};
+use crate::ast::{Program, Statement, Expression};
 use std::mem;
 pub struct Parser {
     lexer: Lexer,
@@ -27,6 +27,25 @@ impl Parser {
     pub fn parse_program(&self) -> Program {
         let mut statements = vec![];
         Program { statements }
+    }
+
+    fn parse_let_statement(&mut self) -> Result<Statement, &'static str> {
+        let name;
+        if let Token::Ident(identifier) = self.peek_token.clone() {
+            name = identifier;
+        } else {
+            return Err("Unexpected identifier")
+        }
+        if !self.expect_peek(Token::Assign) {
+            return Err("Missing assignment operator")
+        }
+        // skipping tokens till semicolon
+        while !self.curr_token_is(Token::Semicolon) {
+            self.next_token();
+        }
+        // TODO: parse value/expression
+        let statement = Statement::Let(name, Expression::Identifier("".to_string()));
+        Ok(statement)
     }
 
     fn curr_token_is(&self, token: Token) -> bool {
