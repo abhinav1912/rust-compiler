@@ -30,17 +30,20 @@ impl Parser {
 
     pub fn parse_program(&self) -> Program {
         let mut statements = vec![];
+        while self.curr_token != Token::Eof {
+            let statement = self.parse_statement();
+        }
         Program { statements }
     }
 
-    fn parse_statement(&self) -> Statement {
+    fn parse_statement(&self) -> Result<Statement> {
         match self.curr_token {
             Token::Let => self.parse_statement(),
             _ => self.parse_statement()
         }
     }
 
-    fn parse_let_statement(&mut self) -> Result<Statement, &'static str> {
+    fn parse_let_statement(&mut self) -> Result<Statement> {
         let name;
         if let Token::Ident(identifier) = self.peek_token.clone() {
             name = identifier;
