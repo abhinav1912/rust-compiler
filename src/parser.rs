@@ -1,6 +1,6 @@
 use crate::lexer::Lexer;
 use crate::token::Token;
-use crate::ast::Program;
+use crate::ast::{Program, Statement};
 use std::mem;
 pub struct Parser {
     lexer: Lexer,
@@ -27,6 +27,22 @@ impl Parser {
     pub fn parse_program(&self) -> Program {
         let mut statements = vec![];
         Program { statements }
+    }
+
+    fn curr_token_is(&self, token: Token) -> bool {
+        return self.curr_token == token;
+    }
+
+    fn peek_token_is(&self, token: Token) -> bool {
+        return self.peek_token == token
+    }
+
+    fn expect_peek(&mut self, token: Token) -> bool {
+        if self.peek_token_is(token) {
+            self.next_token();
+            return true
+        }
+        false
     }
 }
 
