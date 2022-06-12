@@ -29,6 +29,13 @@ impl Parser {
         Program { statements }
     }
 
+    fn parse_statement(&self) -> Statement {
+        match self.curr_token {
+            Token::Let => self.parse_statement(),
+            _ => self.parse_statement()
+        }
+    }
+
     fn parse_let_statement(&mut self) -> Result<Statement, &'static str> {
         let name;
         if let Token::Ident(identifier) = self.peek_token.clone() {
