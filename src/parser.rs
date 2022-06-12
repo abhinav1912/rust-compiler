@@ -2,6 +2,10 @@ use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::ast::{Program, Statement, Expression};
 use std::mem;
+
+// temporary parser error
+type ParserError = &'static str;
+type Result<T> = std::result::Result<T, ParserError>;
 pub struct Parser {
     lexer: Lexer,
     curr_token: Token,
