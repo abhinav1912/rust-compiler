@@ -9,7 +9,8 @@ type Result<T> = std::result::Result<T, ParserError>;
 pub struct Parser {
     lexer: Lexer,
     curr_token: Token,
-    peek_token: Token
+    peek_token: Token,
+    errors: Vec<ParserError>
 }
 
 impl Parser {
@@ -17,7 +18,8 @@ impl Parser {
         let mut parser = Parser{
             lexer: lexer,
             curr_token: Token::Illegal,
-            peek_token: Token::Illegal
+            peek_token: Token::Illegal,
+            errors: vec![]
         };
         parser.next_token();
         parser.next_token();
