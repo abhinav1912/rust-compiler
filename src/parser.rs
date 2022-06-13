@@ -1,7 +1,7 @@
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::ast::{Program, Statement, Expression};
-use std::mem;
+use std::{mem, fmt};
 
 type Result<T> = std::result::Result<T, ParserError>;
 
@@ -89,6 +89,16 @@ impl Parser {
             return true
         }
         false
+    }
+}
+
+impl fmt::Display for ParserError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParserError::ExpectedIdentifier(token) => write!(f, "expected {}", token),
+            ParserError::ExpectedAssign(token) => write!(f, "expected =, got {}", token),
+            ParserError::ParsingNotImplemented => write!(f, "parsing not implemented for token"),
+        }
     }
 }
 
