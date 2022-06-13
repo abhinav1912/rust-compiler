@@ -119,6 +119,17 @@ mod tests {
                 Statement::Let("y".to_string(), Expression::Identifier("".to_string())),
                 Statement::Let("foo".to_string(), Expression::Identifier("".to_string()))
             ]
-        )
+        );
+        check_parser_errors(parser);
+    }
+
+    fn check_parser_errors(parser: Parser) {
+        if parser.errors.len() == 0 {
+            return;
+        }
+        for message in parser.errors.iter() {
+            println!("{}", message);
+        }
+        panic!("{} parser errors occured.", parser.errors.len());
     }
 }
