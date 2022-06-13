@@ -28,7 +28,7 @@ impl Parser {
         self.curr_token = mem::replace(&mut self.peek_token, self.lexer.next_token());
     }
 
-    pub fn parse_program(&self) -> Program {
+    pub fn parse_program(&mut self) -> Program {
         let mut statements = vec![];
         while self.curr_token != Token::Eof {
             let parse_result = self.parse_statement();
@@ -36,20 +36,22 @@ impl Parser {
                 Ok(statement) => statements.push(statement),
                 Err(e) => println!("{}", e)
             }
+            self.next_token();
         }
         Program { statements }
     }
 
-    fn parse_statement(&self) -> Result<Statement> {
+    fn parse_statement(&mut self) -> Result<Statement> {
         match self.curr_token {
-            Token::Let => self.parse_statement(),
-            _ => self.parse_statement()
+            Token::Let => self.parse_let_statement(),
+            _ => Err("Parsing not implemented for token")
         }
     }
 
     fn parse_let_statement(&mut self) -> Result<Statement> {
         let name;
         if let Token::Ident(identifier) = self.peek_token.clone() {
+            self.next_token();
             name = identifier;
         } else {
             return Err("Unexpected identifier")
@@ -106,9 +108,9 @@ mod tests {
         assert_eq!(
             program.statements,
             vec![
-                Statement::Let("x".to_string(), Expression::IntegerLiteral(5)),
-                Statement::Let("y".to_string(), Expression::IntegerLiteral(10)),
-                Statement::Let("foo".to_string(), Expression::IntegerLiteral(155))
+                Statement::Let("x".to_string(), Expression::Identifier("".to_string())),
+                Statement::Let("y".to_string(), Expression::Identifier("".to_string())),
+                Statement::Let("foo".to_string(), Expression::Identifier("".to_string()))
             ]
         )
     }
