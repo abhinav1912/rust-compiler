@@ -8,7 +8,8 @@ type Result<T> = std::result::Result<T, ParserError>;
 #[derive(Debug)]
 pub enum ParserError {
     ExpectedIdentifier(Token),
-    ExpectedAssign(Token)
+    ExpectedAssign(Token),
+    ParsingNotImplemented
 }
 pub struct Parser {
     lexer: Lexer,
@@ -40,7 +41,7 @@ impl Parser {
             let parse_result = self.parse_statement();
             match parse_result {
                 Ok(statement) => statements.push(statement),
-                Err(e) => println!("{}", e)
+                Err(e) => self.errors.push(e)
             }
             self.next_token();
         }
@@ -49,8 +50,8 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Statement> {
         match self.curr_token {
-            Token::Let => self.parse_let_statement(),
-            _ => Err("Parsing not implemented for token")
+            _ => self.parse_let_statement(),
+            _ => Err(ParserError::ParsingNotImplemented)
         }
     }
 
@@ -60,10 +61,10 @@ impl Parser {
             self.next_token();
             name = identifier;
         } else {
-            return Err("Unexpected identifier")
+            return Err(ParserError::ExpectedIdentifier(self.peek_token.clone()))
         }
         if !self.expect_peek(Token::Assign) {
-            return Err("Missing assignment operator")
+            return Err(ParserError::ExpectedAssign(self.curr_token.clone()))
         }
         // skipping tokens till semicolon
         while !self.curr_token_is(Token::Semicolon) {
