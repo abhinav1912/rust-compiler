@@ -50,7 +50,7 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Statement> {
         match self.curr_token {
-            _ => self.parse_let_statement(),
+            Token::Let => self.parse_let_statement(),
             _ => Err(ParserError::ParsingNotImplemented)
         }
     }
@@ -95,7 +95,7 @@ impl Parser {
 impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ParserError::ExpectedIdentifier(token) => write!(f, "expected {}", token),
+            ParserError::ExpectedIdentifier(token) => write!(f, "expected identifier, got {}", token),
             ParserError::ExpectedAssign(token) => write!(f, "expected =, got {}", token),
             ParserError::ParsingNotImplemented => write!(f, "parsing not implemented for token"),
         }
@@ -112,24 +112,14 @@ mod tests {
     #[test]
     fn let_statement() {
         let input = "
-        let x = 5;
-        let y = 10;
-        let foo = 155;
+        let x 5;
+        let = 10;
+        let 155;
         ";
         let mut lexer = Lexer::new(input.to_string().to_owned());
         let mut parser = Parser::new_parser(lexer);
         let program = parser.parse_program();
-        if program.statements.len() != 3 {
-            panic!("program doesn't contain 3 statements")
-        }
-        assert_eq!(
-            program.statements,
-            vec![
-                Statement::Let("x".to_string(), Expression::Identifier("".to_string())),
-                Statement::Let("y".to_string(), Expression::Identifier("".to_string())),
-                Statement::Let("foo".to_string(), Expression::Identifier("".to_string()))
-            ]
-        );
+
         check_parser_errors(parser);
     }
 
