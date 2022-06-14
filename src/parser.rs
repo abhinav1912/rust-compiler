@@ -123,6 +123,19 @@ mod tests {
         check_parser_errors(parser);
     }
 
+    #[test]
+    fn return_statement() {
+        let input = "
+        return 5;
+        return 10;
+        return 999;
+        ";
+        let lexer = Lexer::new(input.to_string().to_owned());
+        let mut parser = Parser::new_parser(lexer);
+        parser.parse_program();
+        check_parser_errors(parser);
+    }
+
     fn check_parser_errors(parser: Parser) {
         if parser.errors.len() == 0 {
             return;
