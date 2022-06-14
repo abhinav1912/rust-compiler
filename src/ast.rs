@@ -9,7 +9,7 @@ pub enum Expression {
 #[derive(Debug, PartialEq)]
 pub enum Statement {
     Let(String, Expression),
-    Return(Expression),
+    Return(Option<Expression>),
     Expression(Expression)
 }
 

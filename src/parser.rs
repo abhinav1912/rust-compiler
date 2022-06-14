@@ -51,6 +51,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Statement> {
         match self.curr_token {
             Token::Let => self.parse_let_statement(),
+            Token::Return => self.parse_return_statement(),
             _ => Err(ParserError::ParsingNotImplemented)
         }
     }
@@ -72,6 +73,15 @@ impl Parser {
         }
         // TODO: parse value/expression
         let statement = Statement::Let(name, Expression::Identifier("".to_string()));
+        Ok(statement)
+    }
+
+    fn parse_return_statement(&mut self) -> Result<Statement> {
+        let statement = Statement::Return(None);
+        self.next_token();
+        while self.curr_token != Token::Semicolon {
+            self.next_token();
+        }
         Ok(statement)
     }
 
