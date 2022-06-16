@@ -29,6 +29,9 @@ pub enum Precedence {
     Call
 }
 
+type PrefixParseFn = fn(&mut Parser) -> Result<Expression>;
+type InfixParseFn = fn(&mut Parser, Expression) -> Result<Expression>;
+
 impl Parser {
     pub fn new_parser(lexer: Lexer) -> Self {
         let mut parser = Parser{
