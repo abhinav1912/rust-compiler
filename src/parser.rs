@@ -18,6 +18,17 @@ pub struct Parser {
     errors: Vec<ParserError>
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub enum Precedence {
+    Lowest,
+    Equals,
+    LessGreater,
+    Sum,
+    Product,
+    Prefix,
+    Call
+}
+
 impl Parser {
     pub fn new_parser(lexer: Lexer) -> Self {
         let mut parser = Parser{
