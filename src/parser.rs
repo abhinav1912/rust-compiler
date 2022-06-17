@@ -9,6 +9,7 @@ type Result<T> = std::result::Result<T, ParserError>;
 pub enum ParserError {
     ExpectedIdentifier(Token),
     ExpectedAssign(Token),
+    ExpectedPrefixToken(Token),
     ParsingNotImplemented
 }
 pub struct Parser {
@@ -99,6 +100,14 @@ impl Parser {
         Ok(statement)
     }
 
+    fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression> {
+        let prefix = self
+        .parse_prefix_fn()
+        .ok_or_else(|| ParserError::ExpectedPrefixToken(self.curr_token.clone()))?;
+        let left_exp = prefix(self);
+        left_exp
+    }
+
     fn parse_prefix_fn(&self) -> Option<PrefixParseFn> {
         match self.curr_token {
             _ => None
@@ -127,6 +136,7 @@ impl fmt::Display for ParserError {
         match self {
             ParserError::ExpectedIdentifier(token) => write!(f, "expected identifier, got {}", token),
             ParserError::ExpectedAssign(token) => write!(f, "expected =, got {}", token),
+            ParserError::ExpectedPrefixToken(token) => write!(f, "expected prefix, got {}", token),
             ParserError::ParsingNotImplemented => write!(f, "parsing not implemented for token"),
         }
     }
