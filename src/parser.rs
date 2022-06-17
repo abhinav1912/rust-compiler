@@ -99,6 +99,12 @@ impl Parser {
         Ok(statement)
     }
 
+    fn parse_prefix_fn(&self) -> Option<PrefixParseFn> {
+        match self.curr_token {
+            _ => None
+        }
+    }
+
     fn curr_token_is(&self, token: Token) -> bool {
         return self.curr_token == token;
     }
