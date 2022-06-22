@@ -110,11 +110,12 @@ impl Parser {
 
     fn parse_prefix_fn(&self) -> Option<PrefixParseFn> {
         match self.curr_token {
+            Token::Ident(_) => Some(Parser::parse_identifier),
             _ => None
         }
     }
 
-    fn parse_identifier(&self) -> Result<Expression> {
+    fn parse_identifier(&mut self) -> Result<Expression> {
         self.parse_identifier_string().map(Expression::Identifier)
     }
 
