@@ -114,6 +114,18 @@ impl Parser {
         }
     }
 
+    fn parse_identifier(&self) -> Result<Expression> {
+        self.parse_identifier_string().map(Expression::Identifier)
+    }
+
+    fn parse_identifier_string(&self) -> Result<String> {
+        if let Token::Ident(ident) = &self.curr_token {
+            Ok(ident.to_string())
+        } else {
+            Err(ParserError::ExpectedIdentifier(self.curr_token.clone()))
+        }
+    }
+
     fn curr_token_is(&self, token: Token) -> bool {
         return self.curr_token == token;
     }
