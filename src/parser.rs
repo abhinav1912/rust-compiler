@@ -10,6 +10,8 @@ pub enum ParserError {
     ExpectedIdentifier(Token),
     ExpectedAssign(Token),
     ExpectedPrefixToken(Token),
+    ExpectedIntegerToken(Token),
+    ParseInt(String),
     ParsingNotImplemented
 }
 pub struct Parser {
@@ -116,6 +118,17 @@ impl Parser {
         left_exp
     }
 
+    fn parse_integer(&mut self) -> Result<Expression> {
+        if let Token::Int(int) = &self.curr_token {
+            match int.parse() {
+                Ok(value) => Ok(Expression::IntegerLiteral(value)),
+                Err(_) => Err(ParserError::ParseInt(int.to_string()))
+            }
+        } else {
+            Err(ParserError::ExpectedIntegerToken(self.curr_token.clone()))
+        }
+    }
+
     fn parse_prefix_fn(&self) -> Option<PrefixParseFn> {
         match self.curr_token {
             Token::Ident(_) => Some(Parser::parse_identifier),
@@ -159,6 +172,8 @@ impl fmt::Display for ParserError {
             ParserError::ExpectedAssign(token) => write!(f, "expected =, got {}", token),
             ParserError::ExpectedPrefixToken(token) => write!(f, "expected prefix, got {}", token),
             ParserError::ParsingNotImplemented => write!(f, "parsing not implemented for token"),
+            ParserError::ExpectedIntegerToken(token) => write!(f, "expected integer, got {}", token),
+            ParserError::ParseInt(str) => write!(f, "failed to parse {} as int", str),
         }
     }
 }
