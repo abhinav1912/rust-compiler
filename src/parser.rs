@@ -67,7 +67,7 @@ impl Parser {
         match self.curr_token {
             Token::Let => self.parse_let_statement(),
             Token::Return => self.parse_return_statement(),
-            _ => Err(ParserError::ParsingNotImplemented)
+            _ => self.parse_expression_statement()
         }
     }
 
