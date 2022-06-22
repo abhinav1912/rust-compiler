@@ -100,6 +100,14 @@ impl Parser {
         Ok(statement)
     }
 
+    fn parse_expression_statement(&mut self) -> Result<Statement> {
+        let expression = self.parse_expression(Precedence::Lowest);
+        if self.peek_token == Token::Semicolon {
+            self.next_token()
+        }
+        expression.map(Statement::Expression)
+    }
+
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression> {
         let prefix = self
         .parse_prefix_fn()
