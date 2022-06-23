@@ -1,6 +1,6 @@
 use crate::lexer::Lexer;
 use crate::token::Token;
-use crate::ast::{Program, Statement, Expression, Prefix};
+use crate::ast::{Program, Statement, Expression, Prefix, Infix};
 use std::{mem, fmt};
 
 type Result<T> = std::result::Result<T, ParserError>;
@@ -10,6 +10,7 @@ pub enum ParserError {
     ExpectedIdentifier(Token),
     ExpectedAssign(Token),
     ExpectedPrefixToken(Token),
+    ExpectedInfixToken(Token),
     ExpectedIntegerToken(Token),
     ParseInt(String),
     ParsingNotImplemented
@@ -114,8 +115,16 @@ impl Parser {
         let prefix = self
         .prefix_parse_fn()
         .ok_or_else(|| ParserError::ExpectedPrefixToken(self.curr_token.clone()))?;
-        let left_exp = prefix(self);
-        left_exp
+        let mut left_exp = prefix(self)?;
+        while !self.peek_token_is(Token::Semicolon) && precedence < self.infix_token(&self.peek_token).0 {
+            if let Some(infix) = self.infix_parse_fn() {
+                self.next_token();
+                left_exp = infix(self, left_exp)?;
+            } else {
+                return Ok(left_exp);
+            }
+        }
+        Ok(left_exp)
     }
 
     fn prefix_parse_fn(&self) -> Option<PrefixParseFn> {
@@ -124,6 +133,20 @@ impl Parser {
             Token::Int(_) => Some(Parser::parse_integer),
             Token::Bang | Token::Minus => Some(Parser::parse_prefix_expression),
             _ => None
+        }
+    }
+
+    fn infix_parse_fn(&self) -> Option<InfixParseFn> {
+        match &self.peek_token {
+            Token::Plus => Some(Parser::parse_infix_expression),
+            Token::Minus => Some(Parser::parse_infix_expression),
+            Token::Asterisk => Some(Parser::parse_infix_expression),
+            Token::Slash => Some(Parser::parse_infix_expression),
+            Token::Eq => Some(Parser::parse_infix_expression),
+            Token::NotEq => Some(Parser::parse_infix_expression),
+            Token::Lt => Some(Parser::parse_infix_expression),
+            Token::Gt => Some(Parser::parse_infix_expression),
+            _ => None,
         }
     }
 
@@ -148,11 +171,33 @@ impl Parser {
 
     }
 
+    fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression> {
+        let (precedence, infix) = self.infix_token(&self.curr_token);
+        let i = infix.ok_or_else(|| ParserError::ExpectedInfixToken(self.curr_token.clone()))?;
+        self.next_token();
+        let right = self.parse_expression(precedence)?;
+        return Ok(Expression::Infix(i, Box::new(left), Box::new(right)));
+    }
+
     fn prefix_token(&self, token: &Token) -> Result<Prefix> {
         match token {
             Token::Bang => Ok(Prefix::Bang),
             Token::Minus => Ok(Prefix::Minus),
             _ => Err(ParserError::ExpectedPrefixToken(token.clone()))
+        }
+    }
+
+    fn infix_token(&self, token: &Token) -> (Precedence, Option<Infix>) {
+        match token {
+            Token::Eq => (Precedence::Equals, Some(Infix::Eq)),
+            Token::NotEq => (Precedence::Equals, Some(Infix::NotEq)),
+            Token::Lt => (Precedence::LessGreater, Some(Infix::Lt)),
+            Token::Gt => (Precedence::LessGreater, Some(Infix::Gt)),
+            Token::Plus => (Precedence::Sum, Some(Infix::Plus)),
+            Token::Minus => (Precedence::Sum, Some(Infix::Minus)),
+            Token::Slash => (Precedence::Product, Some(Infix::Slash)),
+            Token::Asterisk => (Precedence::Product, Some(Infix::Asterisk)),
+            _ => (Precedence::Lowest, None),
         }
     }
 
@@ -191,6 +236,7 @@ impl fmt::Display for ParserError {
             ParserError::ExpectedIdentifier(token) => write!(f, "expected identifier, got {}", token),
             ParserError::ExpectedAssign(token) => write!(f, "expected =, got {}", token),
             ParserError::ExpectedPrefixToken(token) => write!(f, "expected prefix, got {}", token),
+            ParserError::ExpectedInfixToken(token) => write!(f, "expected infix token, got {}", token),
             ParserError::ParsingNotImplemented => write!(f, "parsing not implemented for token"),
             ParserError::ExpectedIntegerToken(token) => write!(f, "expected integer, got {}", token),
             ParserError::ParseInt(str) => write!(f, "failed to parse {} as int", str),
