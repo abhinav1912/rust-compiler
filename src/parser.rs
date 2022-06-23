@@ -231,6 +231,23 @@ mod tests {
         );
     }
 
+    #[test]
+    fn integer_literal_expression() {
+        let input = "5;";
+
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new_parser(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program.statements,
+            vec![Statement::Expression(Expression::IntegerLiteral(5)),]
+        );
+    }
+
+
     fn check_parser_errors(parser: Parser) {
         if parser.errors.len() == 0 {
             return;
