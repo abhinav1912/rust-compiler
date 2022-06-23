@@ -246,9 +246,7 @@ impl fmt::Display for ParserError {
 
 #[cfg(test)]
 mod tests {
-    use std::iter::Enumerate;
-
-    use crate::ast::{Statement, Expression, Prefix};
+    use crate::ast::{Statement, Expression, Prefix, Infix};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     #[test]
@@ -330,6 +328,36 @@ mod tests {
                 vec![Statement::Expression(Expression::Prefix(
                     operator,
                     Box::new(value)
+                ))]
+            );
+        }
+    }
+
+    #[test]
+    fn infix_expression_integer() {
+        let tests = vec![
+            ("5 + 5;", 5, Infix::Plus, 5),
+            ("5 - 5;", 5, Infix::Minus, 5),
+            ("5 * 5;", 5, Infix::Asterisk, 5),
+            ("5 / 5;", 5, Infix::Slash, 5),
+            ("5 > 5;", 5, Infix::Gt, 5),
+            ("5 < 5;", 5, Infix::Lt, 5),
+            ("5 == 5;", 5, Infix::Eq, 5),
+            ("5 != 5;", 5, Infix::NotEq, 5),
+        ];
+        for (input, left, operator, right) in tests {
+            let lexer = Lexer::new(input.to_owned());
+            let mut parser = Parser::new_parser(lexer);
+
+            let program = parser.parse_program();
+            check_parser_errors(parser);
+
+            assert_eq!(
+                program.statements,
+                vec![Statement::Expression(Expression::Infix(
+                    operator,
+                    Box::new(Expression::IntegerLiteral(left)),
+                    Box::new(Expression::IntegerLiteral(right))
                 ))]
             );
         }
