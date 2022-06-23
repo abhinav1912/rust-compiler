@@ -1,6 +1,6 @@
 use std::{fmt, vec};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Identifier(String),
     IntegerLiteral(i64),
@@ -35,7 +35,7 @@ pub enum Infix {
     Slash,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Let(String, Expression),
     Return(Option<Expression>),
