@@ -202,7 +202,7 @@ impl fmt::Display for ParserError {
 mod tests {
     use std::iter::Enumerate;
 
-    use crate::ast::{Statement, Expression};
+    use crate::ast::{Statement, Expression, Prefix};
     use crate::lexer::Lexer;
     use crate::parser::Parser;
     #[test]
@@ -266,6 +266,28 @@ mod tests {
         );
     }
 
+    #[test]
+    fn prefix_expression() {
+        let tests = vec![
+            ("!20;", Prefix::Bang, Expression::IntegerLiteral(20)),
+            ("-3;", Prefix::Minus, Expression::IntegerLiteral(3)),
+        ];
+        for (input, operator, value) in tests {
+            let lexer = Lexer::new(input.to_owned());
+            let mut parser = Parser::new_parser(lexer);
+
+            let program = parser.parse_program();
+            check_parser_errors(parser);
+
+            assert_eq!(
+                program.statements,
+                vec![Statement::Expression(Expression::Prefix(
+                    operator,
+                    Box::new(value)
+                ))]
+            );
+        }
+    }
 
     fn check_parser_errors(parser: Parser) {
         if parser.errors.len() == 0 {
