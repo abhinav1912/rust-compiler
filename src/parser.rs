@@ -118,6 +118,14 @@ impl Parser {
         left_exp
     }
 
+    fn parse_prefix_fn(&self) -> Option<PrefixParseFn> {
+        match self.curr_token {
+            Token::Ident(_) => Some(Parser::parse_identifier),
+            Token::Int(_) => Some(Parser::parse_integer),
+            _ => None
+        }
+    }
+
     fn parse_integer(&mut self) -> Result<Expression> {
         if let Token::Int(int) = &self.curr_token {
             match int.parse() {
@@ -126,13 +134,6 @@ impl Parser {
             }
         } else {
             Err(ParserError::ExpectedIntegerToken(self.curr_token.clone()))
-        }
-    }
-
-    fn parse_prefix_fn(&self) -> Option<PrefixParseFn> {
-        match self.curr_token {
-            Token::Ident(_) => Some(Parser::parse_identifier),
-            _ => None
         }
     }
 
