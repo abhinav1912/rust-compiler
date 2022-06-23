@@ -189,9 +189,9 @@ mod tests {
     #[test]
     fn let_statement() {
         let input = "
-        let x 5;
-        let = 10;
-        let 155;
+        let x = 5;
+        let y = 10;
+        let foo = 155;
         ";
         let mut lexer = Lexer::new(input.to_string().to_owned());
         let mut parser = Parser::new_parser(lexer);
@@ -211,6 +211,24 @@ mod tests {
         let mut parser = Parser::new_parser(lexer);
         parser.parse_program();
         check_parser_errors(parser);
+    }
+
+    #[test]
+    fn identifier_expression() {
+        let input = "foobar;";
+
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new_parser(lexer);
+
+        let program = parser.parse_program();
+        check_parser_errors(parser);
+
+        assert_eq!(
+            program.statements,
+            vec![Statement::Expression(Expression::Identifier(
+                "foobar".to_string()
+            )),]
+        );
     }
 
     fn check_parser_errors(parser: Parser) {
