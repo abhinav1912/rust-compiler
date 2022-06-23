@@ -1,6 +1,6 @@
 use crate::lexer::Lexer;
 use crate::token::Token;
-use crate::ast::{Program, Statement, Expression};
+use crate::ast::{Program, Statement, Expression, Prefix};
 use std::{mem, fmt};
 
 type Result<T> = std::result::Result<T, ParserError>;
@@ -122,6 +122,7 @@ impl Parser {
         match self.curr_token {
             Token::Ident(_) => Some(Parser::parse_identifier),
             Token::Int(_) => Some(Parser::parse_integer),
+            Token::Bang | Token::Minus => Some(Parser::parse_prefix_expression),
             _ => None
         }
     }
@@ -134,6 +135,24 @@ impl Parser {
             }
         } else {
             Err(ParserError::ExpectedIntegerToken(self.curr_token.clone()))
+        }
+    }
+
+    fn parse_prefix_expression(&mut self) -> Result<Expression> {
+        // prefix token is the current token
+        let p = self.prefix_token(&self.curr_token)?;
+        self.next_token();
+        // parse expression on the right
+        let expression = self.parse_expression(Precedence::Prefix)?;
+        Ok(Expression::Prefix(p, Box::new(expression)))
+
+    }
+
+    fn prefix_token(&self, token: &Token) -> Result<Prefix> {
+        match token {
+            Token::Bang => Ok(Prefix::Bang),
+            Token::Minus => Ok(Prefix::Minus),
+            _ => Err(ParserError::ExpectedPrefixToken(token.clone()))
         }
     }
 
