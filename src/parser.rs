@@ -12,6 +12,7 @@ pub enum ParserError {
     ExpectedPrefixToken(Token),
     ExpectedInfixToken(Token),
     ExpectedIntegerToken(Token),
+    ExpectedRParenToken(Token),
     ParseInt(String),
     ParsingNotImplemented
 }
@@ -133,6 +134,7 @@ impl Parser {
             Token::Int(_) => Some(Parser::parse_integer),
             Token::Bang | Token::Minus => Some(Parser::parse_prefix_expression),
             Token::True | Token::False => Some(Parser::parse_boolean),
+            Token::Lparen => Some(Parser::parse_grouped_expression),
             _ => None
         }
     }
@@ -182,6 +184,15 @@ impl Parser {
 
     fn parse_boolean(&mut self) -> Result<Expression> {
         return Ok(Expression::Boolean(self.curr_token_is(Token::True)))
+    }
+
+    fn parse_grouped_expression(&mut self) -> Result<Expression> {
+        self.next_token();
+        let expression = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(Token::Rparen) {
+            return Err(ParserError::ExpectedRParenToken(self.curr_token.clone()))
+        }
+        Ok(expression)
     }
 
     fn prefix_token(&self, token: &Token) -> Result<Prefix> {
@@ -245,6 +256,7 @@ impl fmt::Display for ParserError {
             ParserError::ParsingNotImplemented => write!(f, "parsing not implemented for token"),
             ParserError::ExpectedIntegerToken(token) => write!(f, "expected integer, got {}", token),
             ParserError::ParseInt(str) => write!(f, "failed to parse {} as int", str),
+            ParserError::ExpectedRParenToken(token) => write!(f, "expected ), got {}", token),
         }
     }
 }
