@@ -132,6 +132,7 @@ impl Parser {
             Token::Ident(_) => Some(Parser::parse_identifier),
             Token::Int(_) => Some(Parser::parse_integer),
             Token::Bang | Token::Minus => Some(Parser::parse_prefix_expression),
+            Token::True | Token::False => Some(Parser::parse_boolean),
             _ => None
         }
     }
@@ -177,6 +178,10 @@ impl Parser {
         self.next_token();
         let right = self.parse_expression(precedence)?;
         return Ok(Expression::Infix(i, Box::new(left), Box::new(right)));
+    }
+
+    fn parse_boolean(&mut self) -> Result<Expression> {
+        return Ok(Expression::Boolean(self.curr_token_is(Token::True)))
     }
 
     fn prefix_token(&self, token: &Token) -> Result<Prefix> {
