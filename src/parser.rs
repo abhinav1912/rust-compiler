@@ -368,6 +368,31 @@ mod tests {
         }
     }
 
+    #[test]
+    fn infix_expression_boolean() {
+        let tests = vec![
+            ("true == true", true, Infix::Eq, true),
+            ("true != false", true, Infix::NotEq, false),
+            ("false == false", false, Infix::Eq, false),
+        ];
+        for (input, left, operator, right) in tests {
+            let lexer = Lexer::new(input.to_owned());
+            let mut parser = Parser::new_parser(lexer);
+
+            let program = parser.parse_program();
+            check_parser_errors(parser);
+
+            assert_eq!(
+                program.statements,
+                vec![Statement::Expression(Expression::Infix(
+                    operator,
+                    Box::new(Expression::Boolean(left)),
+                    Box::new(Expression::Boolean(right))
+                ))]
+            );
+        }
+    }
+
     fn check_parser_errors(parser: Parser) {
         if parser.errors.len() == 0 {
             return;
