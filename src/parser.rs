@@ -14,6 +14,8 @@ pub enum ParserError {
     ExpectedIntegerToken(Token),
     ExpectedLParenToken(Token),
     ExpectedRParenToken(Token),
+    ExpectedLBraceToken(Token),
+    ExpectedRBraceToken(Token),
     ParseInt(String),
     ParsingNotImplemented
 }
@@ -209,11 +211,21 @@ impl Parser {
         }
 
         if !self.expect_peek(Token::Lbrace) {
-            return Err(ParserError::ExpectedRParenToken(self.curr_token.clone()))
+            return Err(ParserError::ExpectedLBraceToken(self.curr_token.clone()))
         }
 
         let consequence = self.parse_block_statement()?;
-        return Ok(Expression::If(Box::new(condition), consequence, None));
+        let mut alternative: Option<BlockStatement> = None;
+        if self.peek_token_is(Token::Else) {
+            self.next_token();
+
+            if !self.expect_peek(Token::Lbrace) {
+                return Err(ParserError::ExpectedLBraceToken(self.curr_token.clone()))
+            }
+
+            alternative = Some(self.parse_block_statement()?);
+        }
+        return Ok(Expression::If(Box::new(condition), consequence, alternative));
     }
 
     fn parse_block_statement(&mut self) -> Result<BlockStatement> {
@@ -292,6 +304,8 @@ impl fmt::Display for ParserError {
             ParserError::ParseInt(str) => write!(f, "failed to parse {} as int", str),
             ParserError::ExpectedRParenToken(token) => write!(f, "expected ), got {}", token),
             ParserError::ExpectedLParenToken(token) => write!(f, "expected (, got {}", token),
+            ParserError::ExpectedLBraceToken(token) => write!(f, "expected {{, got {}", token),
+            ParserError::ExpectedRBraceToken(token) => write!(f, "expected }}, got {}", token),
         }
     }
 }
