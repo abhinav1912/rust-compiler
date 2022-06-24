@@ -139,6 +139,7 @@ impl Parser {
             Token::True | Token::False => Some(Parser::parse_boolean),
             Token::Lparen => Some(Parser::parse_grouped_expression),
             Token::If => Some(Parser::parse_if_expression),
+            Token::Function => Some(Parser::parse_function_literal),
             _ => None
         }
     }
@@ -239,6 +240,44 @@ impl Parser {
 
         let block_statement = BlockStatement{ statements };
         Ok(block_statement)
+    }
+
+    fn parse_function_literal(&mut self) -> Result<Expression> {
+        if !self.expect_peek(Token::Lparen) {
+            return Err(ParserError::ExpectedLParenToken(self.curr_token.clone()))
+        }
+
+        let parameters = self.parse_function_parameters()?;
+        if !self.expect_peek(Token::Lbrace) {
+            return Err(ParserError::ExpectedLBraceToken(self.curr_token.clone()));
+        }
+        let body = self.parse_block_statement()?;
+        return Ok(Expression::FunctionLiteral(parameters, body))
+    }
+
+    fn parse_function_parameters(&mut self) -> Result<Vec<String>> {
+        let mut identifiers: Vec<String> = vec![];
+        if self.peek_token_is(Token::Rparen) {
+            self.next_token();
+            return Ok(identifiers)
+        }
+
+        self.next_token();
+        // curr_token: first parameter
+        identifiers.push(self.parse_identifier_string()?);
+
+        while self.peek_token == Token::Comma {
+            // curr_token: previous param
+            self.next_token();
+            // curr_token: comma
+            self.next_token();
+            // curr_token: current param
+            identifiers.push(self.parse_identifier_string()?);
+        }
+        if !self.expect_peek(Token::Rparen) {
+            return Err(ParserError::ExpectedRParenToken(self.curr_token.clone()));
+        }
+        Ok(identifiers)
     }
 
     fn prefix_token(&self, token: &Token) -> Result<Prefix> {
