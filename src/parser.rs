@@ -154,6 +154,7 @@ impl Parser {
             Token::NotEq => Some(Parser::parse_infix_expression),
             Token::Lt => Some(Parser::parse_infix_expression),
             Token::Gt => Some(Parser::parse_infix_expression),
+            Token::Lparen => Some(Parser::parse_call_expression),
             _ => None,
         }
     }
@@ -255,6 +256,37 @@ impl Parser {
         return Ok(Expression::FunctionLiteral(parameters, body))
     }
 
+    fn parse_call_expression(&mut self, function: Expression) -> Result<Expression> {
+        let arguments = self.parse_expressions(Token::Rparen)?;
+        Ok(Expression::Call(Box::new(function), arguments))
+    }
+
+    fn parse_expressions(&mut self, closing_token: Token) -> Result<Vec<Expression>> {
+        let mut expressions = vec![];
+
+        if self.peek_token == closing_token {
+            self.next_token();
+            return Ok(expressions);
+        }
+
+        self.next_token();
+        expressions.push(self.parse_expression(Precedence::Lowest)?);
+        while self.peek_token == Token::Comma {
+            self.next_token();
+            // cur_token: ,
+            self.next_token();
+            // cur_token: the first token of the current expression
+            expressions.push(self.parse_expression(Precedence::Lowest)?);
+            // cur_token: the last token of the current expression
+        }
+        if !self.expect_peek(closing_token) {
+
+        }
+        // cur_token: closing_token
+
+        Ok(expressions)
+    }
+
     fn parse_function_parameters(&mut self) -> Result<Vec<String>> {
         let mut identifiers: Vec<String> = vec![];
         if self.peek_token_is(Token::Rparen) {
@@ -298,6 +330,7 @@ impl Parser {
             Token::Minus => (Precedence::Sum, Some(Infix::Minus)),
             Token::Slash => (Precedence::Product, Some(Infix::Slash)),
             Token::Asterisk => (Precedence::Product, Some(Infix::Asterisk)),
+            Token::Lparen => (Precedence::Call, None),
             _ => (Precedence::Lowest, None),
         }
     }
