@@ -1,6 +1,6 @@
 use crate::lexer::Lexer;
 use crate::token::Token;
-use crate::ast::{Program, Statement, Expression, Prefix, Infix};
+use crate::ast::{Program, Statement, Expression, Prefix, Infix, BlockStatement};
 use std::{mem, fmt};
 
 type Result<T> = std::result::Result<T, ParserError>;
@@ -12,6 +12,7 @@ pub enum ParserError {
     ExpectedPrefixToken(Token),
     ExpectedInfixToken(Token),
     ExpectedIntegerToken(Token),
+    ExpectedLParenToken(Token),
     ExpectedRParenToken(Token),
     ParseInt(String),
     ParsingNotImplemented
@@ -135,6 +136,7 @@ impl Parser {
             Token::Bang | Token::Minus => Some(Parser::parse_prefix_expression),
             Token::True | Token::False => Some(Parser::parse_boolean),
             Token::Lparen => Some(Parser::parse_grouped_expression),
+            Token::If => Some(Parser::parse_if_expression),
             _ => None
         }
     }
@@ -193,6 +195,38 @@ impl Parser {
             return Err(ParserError::ExpectedRParenToken(self.curr_token.clone()))
         }
         Ok(expression)
+    }
+
+    fn parse_if_expression(&mut self) -> Result<Expression> {
+        if !self.expect_peek(Token::Lparen) {
+            return Err(ParserError::ExpectedLParenToken(self.curr_token.clone()))
+        }
+
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(Token::Rparen) {
+            return Err(ParserError::ExpectedRParenToken(self.curr_token.clone()))
+        }
+
+        if !self.expect_peek(Token::Lbrace) {
+            return Err(ParserError::ExpectedRParenToken(self.curr_token.clone()))
+        }
+
+        let consequence = self.parse_block_statement()?;
+        return Ok(Expression::If(Box::new(condition), consequence, None));
+    }
+
+    fn parse_block_statement(&mut self) -> Result<BlockStatement> {
+        let mut statements: Vec<Statement> = vec![];
+        self.next_token();
+
+        while !self.curr_token_is(Token::Rbrace) && !self.curr_token_is(Token::Eof) {
+            statements.push(self.parse_statement()?);
+            self.next_token();
+        }
+
+        let block_statement = BlockStatement{ statements };
+        Ok(block_statement)
     }
 
     fn prefix_token(&self, token: &Token) -> Result<Prefix> {
@@ -257,6 +291,7 @@ impl fmt::Display for ParserError {
             ParserError::ExpectedIntegerToken(token) => write!(f, "expected integer, got {}", token),
             ParserError::ParseInt(str) => write!(f, "failed to parse {} as int", str),
             ParserError::ExpectedRParenToken(token) => write!(f, "expected ), got {}", token),
+            ParserError::ExpectedLParenToken(token) => write!(f, "expected (, got {}", token),
         }
     }
 }
