@@ -1,4 +1,4 @@
-use crate::{lexer::Lexer, parser::{Parser, ParserError}};
+use crate::{lexer::Lexer, parser::{Parser, ParserError}, evaluator};
 use std::io::{self, Write};
 
 const PROMPT: &str = ">> ";
@@ -13,7 +13,11 @@ pub fn start() {
             print_parser_errors(parser.errors);
             continue;
         }
-        println!("{}", program);
+        let evaluation = evaluator::eval(&program);
+        match evaluation {
+            Ok(obj) => println!("{}", obj),
+            Err(err) => println!("{}", err)
+        }
     }
 }
 
