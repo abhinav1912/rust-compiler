@@ -23,7 +23,7 @@ pub struct Parser {
     lexer: Lexer,
     curr_token: Token,
     peek_token: Token,
-    errors: Vec<ParserError>
+    pub errors: Vec<ParserError>
 }
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -87,7 +87,7 @@ impl Parser {
             return Err(ParserError::ExpectedIdentifier(self.peek_token.clone()))
         }
         if !self.expect_peek(Token::Assign) {
-            return Err(ParserError::ExpectedAssign(self.curr_token.clone()))
+            return Err(ParserError::ExpectedAssign(self.peek_token.clone()))
         }
 
         self.next_token();
@@ -123,7 +123,7 @@ impl Parser {
     fn parse_expression(&mut self, precedence: Precedence) -> Result<Expression> {
         let prefix = self
         .prefix_parse_fn()
-        .ok_or_else(|| ParserError::ExpectedPrefixToken(self.curr_token.clone()))?;
+        .ok_or_else(|| ParserError::ExpectedPrefixToken(self.peek_token.clone()))?;
         let mut left_exp = prefix(self)?;
         while !self.peek_token_is(Token::Semicolon) && precedence < self.infix_token(&self.peek_token).0 {
             if let Some(infix) = self.infix_parse_fn() {
@@ -171,7 +171,7 @@ impl Parser {
                 Err(_) => Err(ParserError::ParseInt(int.to_string()))
             }
         } else {
-            Err(ParserError::ExpectedIntegerToken(self.curr_token.clone()))
+            Err(ParserError::ExpectedIntegerToken(self.peek_token.clone()))
         }
     }
 
@@ -187,7 +187,7 @@ impl Parser {
 
     fn parse_infix_expression(&mut self, left: Expression) -> Result<Expression> {
         let (precedence, infix) = self.infix_token(&self.curr_token);
-        let i = infix.ok_or_else(|| ParserError::ExpectedInfixToken(self.curr_token.clone()))?;
+        let i = infix.ok_or_else(|| ParserError::ExpectedInfixToken(self.peek_token.clone()))?;
         self.next_token();
         let right = self.parse_expression(precedence)?;
         return Ok(Expression::Infix(i, Box::new(left), Box::new(right)));
@@ -201,24 +201,24 @@ impl Parser {
         self.next_token();
         let expression = self.parse_expression(Precedence::Lowest)?;
         if !self.expect_peek(Token::Rparen) {
-            return Err(ParserError::ExpectedRParenToken(self.curr_token.clone()))
+            return Err(ParserError::ExpectedRParenToken(self.peek_token.clone()))
         }
         Ok(expression)
     }
 
     fn parse_if_expression(&mut self) -> Result<Expression> {
         if !self.expect_peek(Token::Lparen) {
-            return Err(ParserError::ExpectedLParenToken(self.curr_token.clone()))
+            return Err(ParserError::ExpectedLParenToken(self.peek_token.clone()))
         }
 
         self.next_token();
         let condition = self.parse_expression(Precedence::Lowest)?;
         if !self.expect_peek(Token::Rparen) {
-            return Err(ParserError::ExpectedRParenToken(self.curr_token.clone()))
+            return Err(ParserError::ExpectedRParenToken(self.peek_token.clone()))
         }
 
         if !self.expect_peek(Token::Lbrace) {
-            return Err(ParserError::ExpectedLBraceToken(self.curr_token.clone()))
+            return Err(ParserError::ExpectedLBraceToken(self.peek_token.clone()))
         }
 
         let consequence = self.parse_block_statement()?;
@@ -227,7 +227,7 @@ impl Parser {
             self.next_token();
 
             if !self.expect_peek(Token::Lbrace) {
-                return Err(ParserError::ExpectedLBraceToken(self.curr_token.clone()))
+                return Err(ParserError::ExpectedLBraceToken(self.peek_token.clone()))
             }
 
             alternative = Some(self.parse_block_statement()?);
@@ -250,12 +250,12 @@ impl Parser {
 
     fn parse_function_literal(&mut self) -> Result<Expression> {
         if !self.expect_peek(Token::Lparen) {
-            return Err(ParserError::ExpectedLParenToken(self.curr_token.clone()))
+            return Err(ParserError::ExpectedLParenToken(self.peek_token.clone()))
         }
 
         let parameters = self.parse_function_parameters()?;
         if !self.expect_peek(Token::Lbrace) {
-            return Err(ParserError::ExpectedLBraceToken(self.curr_token.clone()));
+            return Err(ParserError::ExpectedLBraceToken(self.peek_token.clone()));
         }
         let body = self.parse_block_statement()?;
         return Ok(Expression::FunctionLiteral(parameters, body))
@@ -312,7 +312,7 @@ impl Parser {
             identifiers.push(self.parse_identifier_string()?);
         }
         if !self.expect_peek(Token::Rparen) {
-            return Err(ParserError::ExpectedRParenToken(self.curr_token.clone()));
+            return Err(ParserError::ExpectedRParenToken(self.peek_token.clone()));
         }
         Ok(identifiers)
     }
@@ -348,7 +348,7 @@ impl Parser {
         if let Token::Ident(ident) = &self.curr_token {
             Ok(ident.to_string())
         } else {
-            Err(ParserError::ExpectedIdentifier(self.curr_token.clone()))
+            Err(ParserError::ExpectedIdentifier(self.peek_token.clone()))
         }
     }
 
