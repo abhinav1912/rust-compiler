@@ -1,4 +1,4 @@
-use crate::{lexer::Lexer, token, token::Token};
+use crate::{lexer::Lexer, parser::{Parser, ParserError}};
 use std::io::{self, Write};
 
 const PROMPT: &str = ">> ";
@@ -6,16 +6,20 @@ const PROMPT: &str = ">> ";
 pub fn start() {
     loop {
         let input = get_input();
-        let mut lexer = Lexer::new(input);
-        let mut token: token::Token;
-        loop {
-            token = lexer.next_token();
-            if token == Token::Eof {
-                break;
-            } else {
-                println!("{}", token);
-            }
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new_parser(lexer);
+        let program = parser.parse_program();
+        if !parser.errors.is_empty() {
+            print_parser_errors(parser.errors);
+            continue;
         }
+        println!("{}", program);
+    }
+}
+
+fn print_parser_errors(errors: Vec<ParserError>) {
+    for error in errors {
+        println!("{}", error);
     }
 }
 
