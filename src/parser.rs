@@ -89,19 +89,24 @@ impl Parser {
         if !self.expect_peek(Token::Assign) {
             return Err(ParserError::ExpectedAssign(self.curr_token.clone()))
         }
-        // skipping tokens till semicolon
-        while !self.curr_token_is(Token::Semicolon) {
+
+        self.next_token();
+        let statement = Statement::Let(name, self.parse_expression(Precedence::Lowest)?);
+        
+        if self.peek_token_is(Token::Semicolon) {
             self.next_token();
         }
-        // TODO: parse value/expression
-        let statement = Statement::Let(name, Expression::Identifier("".to_string()));
+
         Ok(statement)
     }
 
     fn parse_return_statement(&mut self) -> Result<Statement> {
-        let statement = Statement::Return(None);
         self.next_token();
-        while self.curr_token != Token::Semicolon {
+        if self.curr_token == Token::Semicolon {
+            return Ok(Statement::Return(None));
+        }
+        let statement = Statement::Return(Some(self.parse_expression(Precedence::Lowest)?));
+        if self.peek_token_is(Token::Semicolon) {
             self.next_token();
         }
         Ok(statement)
