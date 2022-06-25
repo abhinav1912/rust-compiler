@@ -397,26 +397,52 @@ mod tests {
         let input = "
         let x = 5;
         let y = 10;
-        let foo = 155;
+        let foo = x + y;
         ";
         let mut lexer = Lexer::new(input.to_string().to_owned());
         let mut parser = Parser::new_parser(lexer);
         let program = parser.parse_program();
 
         check_parser_errors(parser);
+        assert_eq!(
+            program.statements,
+            vec![
+                Statement::Let("x".to_string(), Expression::IntegerLiteral(5)),
+                Statement::Let("y".to_string(), Expression::IntegerLiteral(10)),
+                Statement::Let(
+                    "foo".to_string(),
+                    Expression::Infix(
+                        Infix::Plus,
+                        Box::new(Expression::Identifier("x".to_string())),
+                        Box::new(Expression::Identifier("y".to_string()))
+                    )
+                )
+            ]
+        );
     }
 
     #[test]
     fn return_statement() {
         let input = "
+        return;
         return 5;
         return 10;
         return 999;
         ";
         let lexer = Lexer::new(input.to_string().to_owned());
         let mut parser = Parser::new_parser(lexer);
-        parser.parse_program();
+        let program = parser.parse_program();
         check_parser_errors(parser);
+
+        assert_eq!(
+            program.statements,
+            vec![
+                Statement::Return(None),
+                Statement::Return(Some(Expression::IntegerLiteral(5))),
+                Statement::Return(Some(Expression::IntegerLiteral(10))),
+                Statement::Return(Some(Expression::IntegerLiteral(999))),
+            ]
+        );
     }
 
     #[test]
