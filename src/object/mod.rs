@@ -14,6 +14,16 @@ pub enum EvalError {
 
 }
 
+impl Object {
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Object::Boolean(value) => *value,
+            Object::Null => false,
+            _ => true
+        }
+    }
+}
+
 impl fmt::Display for Object {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
