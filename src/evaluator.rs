@@ -41,12 +41,21 @@ fn eval_infix_expression(infix: &Infix, left_exp: &Expression, right_exp: &Expre
     let right_obj = eval_expression(right_exp)?;
     match (left_obj, right_obj) {
         (Object::Integer(left), Object::Integer(right)) => eval_integer_infix_expression(infix, left, right),
-        _ => Err(EvalError::TypeMismatch(infix.clone(), left_obj, right_obj))
+        (left, right) => Err(EvalError::TypeMismatch(infix.clone(), left, right))
     }
 }
 
 fn eval_integer_infix_expression(infix: &Infix, left: i64, right: i64) -> EvalResult {
-
+    match infix {
+        Infix::Eq => Ok(Object::Boolean(left == right)),
+        Infix::NotEq => Ok(Object::Boolean(left != right)),
+        Infix::Lt => Ok(Object::Boolean(left < right)),
+        Infix::Gt => Ok(Object::Boolean(left > right)),
+        Infix::Plus => Ok(Object::Integer(left + right)),
+        Infix::Minus => Ok(Object::Integer(left - right)),
+        Infix::Asterisk => Ok(Object::Integer(left * right)),
+        Infix::Slash => Ok(Object::Integer(left / right)),
+    }
 }
 
 mod evaluator_tests {
