@@ -41,6 +41,7 @@ fn eval_infix_expression(infix: &Infix, left_exp: &Expression, right_exp: &Expre
     let right_obj = eval_expression(right_exp)?;
     match (left_obj, right_obj) {
         (Object::Integer(left), Object::Integer(right)) => eval_integer_infix_expression(infix, left, right),
+        (Object::Boolean(left), Object::Boolean(right)) => eval_boolean_infix_expression(infix, left, right),
         (left, right) => Err(EvalError::TypeMismatch(infix.clone(), left, right))
     }
 }
@@ -55,6 +56,18 @@ fn eval_integer_infix_expression(infix: &Infix, left: i64, right: i64) -> EvalRe
         Infix::Minus => Ok(Object::Integer(left - right)),
         Infix::Asterisk => Ok(Object::Integer(left * right)),
         Infix::Slash => Ok(Object::Integer(left / right)),
+    }
+}
+
+fn eval_boolean_infix_expression(infix: &Infix, left: bool, right: bool) -> EvalResult {
+    match infix {
+        Infix::Eq => Ok(Object::Boolean(left == right)),
+        Infix::NotEq => Ok(Object::Boolean(left != right)),
+        _ => Err(EvalError::UnknownInfixOperator(
+            infix.clone(),
+            Object::Boolean(left),
+            Object::Boolean(right)
+        )),
     }
 }
 

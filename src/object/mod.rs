@@ -14,6 +14,7 @@ pub enum Object {
 #[derive(Debug)]
 pub enum EvalError {
     UnknownPrefixOperator(Prefix, Object),
+    UnknownInfixOperator(Infix, Object, Object),
     TypeMismatch(Infix, Object, Object)
 }
 
