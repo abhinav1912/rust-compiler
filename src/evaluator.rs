@@ -31,3 +31,48 @@ fn eval_prefix_expression(prefix: &Prefix, expression: &Expression) -> EvalResul
         Prefix::Minus => todo!(),
     }
 }
+
+mod evaluator_tests {
+    use crate::evaluator;
+    use crate::{parser::Parser, object::EvalResult, lexer::Lexer};
+
+    #[test]
+    fn eval_boolean() {
+        expect_values(vec![
+            // Prefix
+            ("!true", "false"),
+            ("!!true", "true"),
+            ("!false", "true"),
+            ("!!false", "false"),
+            ("!null", "true"),
+            ("!!null", "false"),
+            ("!0", "false"),
+            ("!3", "false"),
+            ("!!3", "true"),
+        ]);
+    }
+
+    fn expect_values(tests: Vec<(&str, &str)>) {
+        for (input, expected) in &tests {
+            match eval_input(input) {
+                Ok(obj) => {
+                    assert_eq!(obj.to_string(), expected.to_string(), "for `{}`", input);
+                }
+                Err(err) => {
+                    panic!(
+                        "expected `{}`, but got error=`{}` for `{}`",
+                        expected, err, input
+                    );
+                }
+            }
+        }
+    }
+
+    fn eval_input(input: &str) -> EvalResult {
+        let lexer = Lexer::new(input.to_owned());
+        let mut parser = Parser::new_parser(lexer);
+
+        let program = parser.parse_program();
+        evaluator::eval(&program)
+    }
+}
