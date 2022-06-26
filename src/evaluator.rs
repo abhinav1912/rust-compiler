@@ -75,6 +75,12 @@ mod evaluator_tests {
             ("!0", "false"),
             ("!3", "false"),
             ("!!3", "true"),
+            ("1 == 2", "false"),
+            ("2 == 2", "true"),
+            ("1 != 2", "true"),
+            ("2 != 2", "false"),
+            ("1 > 2", "false"),
+            ("1 < 2", "true"),
         ]);
     }
 
