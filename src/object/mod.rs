@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::ast::Prefix;
+
 pub type EvalResult = Result<Object, EvalError>;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -11,7 +13,7 @@ pub enum Object {
 
 #[derive(Debug)]
 pub enum EvalError {
-
+    UnknownPrefixOperator(Prefix, Object)
 }
 
 impl Object {

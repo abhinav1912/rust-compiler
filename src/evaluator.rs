@@ -28,7 +28,10 @@ fn eval_prefix_expression(prefix: &Prefix, expression: &Expression) -> EvalResul
     let obj = eval_expression(expression)?;
     match prefix {
         Prefix::Bang => Ok(Object::Boolean(!obj.is_truthy())),
-        Prefix::Minus => todo!(),
+        Prefix::Minus => match obj {
+            Object::Integer(value) => Ok(Object::Integer(-value)),
+            _ => Err(EvalError::UnknownPrefixOperator(prefix.clone(), obj))
+        }
     }
 }
 
