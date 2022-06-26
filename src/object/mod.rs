@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::ast::Prefix;
+use crate::ast::{Prefix, Infix};
 
 pub type EvalResult = Result<Object, EvalError>;
 
@@ -13,7 +13,8 @@ pub enum Object {
 
 #[derive(Debug)]
 pub enum EvalError {
-    UnknownPrefixOperator(Prefix, Object)
+    UnknownPrefixOperator(Prefix, Object),
+    TypeMismatch(Infix, Object, Object)
 }
 
 impl Object {

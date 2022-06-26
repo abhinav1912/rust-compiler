@@ -1,4 +1,4 @@
-use crate::{ast::{Program, Statement, Expression, Prefix}, object::{Object, EvalError, EvalResult}};
+use crate::{ast::{Program, Statement, Expression, Prefix, Infix}, object::{Object, EvalError, EvalResult}};
 
 pub fn eval(program: &Program) -> EvalResult {
     let mut result = Object::Null;
@@ -20,6 +20,7 @@ fn eval_expression(expression: &Expression) -> EvalResult {
         Expression::IntegerLiteral(value) => Ok(Object::Integer(*value)),
         Expression::Boolean(value) => Ok(Object::Boolean(*value)),
         Expression::Prefix(prefix, expression) => eval_prefix_expression(prefix, expression),
+        Expression::Infix(infix, left_exp, right_exp) => eval_infix_expression(infix, left_exp, right_exp),
         _ => Ok(Object::Null)
     }
 }
@@ -33,6 +34,19 @@ fn eval_prefix_expression(prefix: &Prefix, expression: &Expression) -> EvalResul
             _ => Err(EvalError::UnknownPrefixOperator(prefix.clone(), obj))
         }
     }
+}
+
+fn eval_infix_expression(infix: &Infix, left_exp: &Expression, right_exp: &Expression) -> EvalResult {
+    let left_obj = eval_expression(left_exp)?;
+    let right_obj = eval_expression(right_exp)?;
+    match (left_obj, right_obj) {
+        (Object::Integer(left), Object::Integer(right)) => eval_integer_infix_expression(infix, left, right),
+        _ => Err(EvalError::TypeMismatch(infix.clone(), left_obj, right_obj))
+    }
+}
+
+fn eval_integer_infix_expression(infix: &Infix, left: i64, right: i64) -> EvalResult {
+
 }
 
 mod evaluator_tests {
