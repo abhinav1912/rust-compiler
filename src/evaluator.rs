@@ -55,6 +55,16 @@ mod evaluator_tests {
         ]);
     }
 
+    #[test]
+    fn eval_integer() {
+        expect_values(vec![
+            // Prefix
+            ("1", "1"),
+            ("-123", "-123"),
+            ("-(-123)", "123"),
+        ]);
+    }
+
     fn expect_values(tests: Vec<(&str, &str)>) {
         for (input, expected) in &tests {
             match eval_input(input) {
