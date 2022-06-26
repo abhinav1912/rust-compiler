@@ -27,9 +27,9 @@ impl Object {
 impl fmt::Display for Object {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Object::Integer(value) => writeln!(f, "{}", value),
-            Object::Boolean(value) => writeln!(f, "{}", value),
-            Object::Null => writeln!(f, "{}", "null"),
+            Object::Integer(value) => write!(f, "{}", value),
+            Object::Boolean(value) => write!(f, "{}", value),
+            Object::Null => write!(f, "{}", "null"),
         }
     }
 }
