@@ -169,6 +169,27 @@ mod evaluator_tests {
         ]);
     }
 
+    #[test]
+    fn eval_return() {
+        expect_values(vec![
+            ("return;", "null"),
+            ("return 10;", "10"),
+            ("1 + 2; return; 3 + 4", "null"),
+            ("1 + 2; return 8; 3 + 4", "8"),
+            ("3; return 8 * 2; 3 + 4", "16"),
+            // Nested statements
+            (
+                "if (10 > 1) {
+                if (10 > 1) {
+                    return 10;
+                }
+                return 1;
+            }",
+                "10",
+            ),
+        ]);
+    }
+
     fn expect_values(tests: Vec<(&str, &str)>) {
         for (input, expected) in &tests {
             match eval_input(input) {
