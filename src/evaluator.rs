@@ -4,6 +4,9 @@ pub fn eval(program: &Program) -> EvalResult {
     let mut result = Object::Null;
     for statement in &program.statements {
         result = eval_statement(statement)?;
+        if let Object::Return(value) = result {
+            return Ok(*value)
+        }
     }
     Ok(result)
 }
@@ -11,6 +14,11 @@ pub fn eval(program: &Program) -> EvalResult {
 fn eval_statement(statement: &Statement) -> EvalResult {
     match statement {
         Statement::Expression(expression) => eval_expression(expression),
+        Statement::Return(Some(expression)) => {
+            let result = eval_expression(expression)?;
+            Ok(Object::Return(Box::new(result)))
+        },
+        Statement::Return(None) => Ok(Object::Return(Box::new(Object::Null))),
         _ => Ok(Object::Null),
     }
 }
@@ -87,6 +95,9 @@ fn eval_block_statement(block: &BlockStatement) -> EvalResult {
     let mut result = Object::Null;
     for statement in &block.statements {
         result = eval_statement(statement)?;
+        if let Object::Return(_) = result {
+            return Ok(result)
+        }
     }
     Ok(result)
 }

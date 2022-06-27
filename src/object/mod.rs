@@ -8,6 +8,7 @@ pub type EvalResult = Result<Object, EvalError>;
 pub enum Object {
     Integer(i64),
     Boolean(bool),
+    Return(Box<Object>),
     Null
 }
 
@@ -34,6 +35,7 @@ impl fmt::Display for Object {
             Object::Integer(value) => write!(f, "{}", value),
             Object::Boolean(value) => write!(f, "{}", value),
             Object::Null => write!(f, "{}", "null"),
+            Object::Return(_) => todo!(),
         }
     }
 }
