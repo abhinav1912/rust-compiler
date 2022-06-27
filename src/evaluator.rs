@@ -145,6 +145,19 @@ mod evaluator_tests {
         ]);
     }
 
+    #[test]
+    fn eval_if() {
+        expect_values(vec![
+            ("if (true) { 10 }", "10"),
+            ("if (false) { 10 }", "null"),
+            ("if (null) { 1 } else { 2 }", "2"),
+            ("if (2 > 1) { 3 } else { 4 }", "3"),
+            ("if (2 < 1) { 3 } else { 4 }", "4"),
+            ("if (1 < 2) { 3 }", "3"),
+            ("if (1 > 2) { 3 }", "null"),
+        ]);
+    }
+
     fn expect_values(tests: Vec<(&str, &str)>) {
         for (input, expected) in &tests {
             match eval_input(input) {
