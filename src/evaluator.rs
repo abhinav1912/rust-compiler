@@ -1,4 +1,4 @@
-use crate::{ast::{Program, Statement, Expression, Prefix, Infix}, object::{Object, EvalError, EvalResult}};
+use crate::{ast::{Program, Statement, Expression, Prefix, Infix, BlockStatement}, object::{Object, EvalError, EvalResult}};
 
 pub fn eval(program: &Program) -> EvalResult {
     let mut result = Object::Null;
@@ -21,6 +21,7 @@ fn eval_expression(expression: &Expression) -> EvalResult {
         Expression::Boolean(value) => Ok(Object::Boolean(*value)),
         Expression::Prefix(prefix, expression) => eval_prefix_expression(prefix, expression),
         Expression::Infix(infix, left_exp, right_exp) => eval_infix_expression(infix, left_exp, right_exp),
+        Expression::If(condition, consequence, alternative) => eval_if_expression(condition.as_ref(), consequence, alternative.as_ref()),
         _ => Ok(Object::Null)
     }
 }
@@ -69,6 +70,25 @@ fn eval_boolean_infix_expression(infix: &Infix, left: bool, right: bool) -> Eval
             Object::Boolean(right)
         )),
     }
+}
+
+fn eval_if_expression(condition: &Expression, consequence: &BlockStatement, alternative: Option<&BlockStatement>) -> EvalResult {
+    let result = eval_expression(condition)?;
+    if result.is_truthy() {
+        eval_block_statement(consequence)
+    } else {
+        alternative
+        .map(|a| eval_block_statement(a))
+        .unwrap_or(Ok(Object::Null))
+    }
+}
+
+fn eval_block_statement(block: &BlockStatement) -> EvalResult {
+    let mut result = Object::Null;
+    for statement in &block.statements {
+        result = eval_statement(statement)?;
+    }
+    Ok(result)
 }
 
 mod evaluator_tests {
