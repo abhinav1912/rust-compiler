@@ -7,6 +7,10 @@ pub struct Environment {
 }
 
 impl Environment {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
     pub fn get(&self, name: &str) -> Option<Object> {
         match self.store.get(name) {
             Some(value) => Some(value.clone()),
