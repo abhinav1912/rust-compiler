@@ -1,5 +1,5 @@
+pub mod environment;
 use std::fmt;
-
 use crate::ast::{Prefix, Infix};
 
 pub type EvalResult = Result<Object, EvalError>;
