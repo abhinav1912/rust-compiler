@@ -27,6 +27,15 @@ impl Object {
             _ => true
         }
     }
+
+    pub fn type_name(&self) -> &str {
+        match self {
+            Object::Boolean(_) => "BOOLEAN",
+            Object::Integer(_) => "INTEGER",
+            Object::Null => "NULL",
+            Object::Return(_) => "RETURN",
+        }
+    }
 }
 
 impl fmt::Display for Object {
@@ -34,7 +43,7 @@ impl fmt::Display for Object {
         match self {
             Object::Integer(value) => write!(f, "{}", value),
             Object::Boolean(value) => write!(f, "{}", value),
-            Object::Null => write!(f, "{}", "null"),
+            Object::Null => write!(f, "null"),
             Object::Return(_) => todo!(),
         }
     }
