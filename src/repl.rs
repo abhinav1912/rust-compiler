@@ -4,6 +4,7 @@ use std::{io::{self, Write}, rc::Rc, cell::RefCell};
 const PROMPT: &str = ">> ";
 
 pub fn start() {
+    let env = Rc::new(RefCell::new(Environment::new()));
     loop {
         let input = get_input();
         let lexer = Lexer::new(input);
@@ -13,8 +14,7 @@ pub fn start() {
             print_parser_errors(parser.errors);
             continue;
         }
-        let env = Rc::new(RefCell::new(Environment::new()));
-        let evaluation = evaluator::eval(&program, env);
+        let evaluation = evaluator::eval(&program, Rc::clone(&env));
         match evaluation {
             Ok(obj) => println!("{}", obj),
             Err(err) => println!("{}", err)

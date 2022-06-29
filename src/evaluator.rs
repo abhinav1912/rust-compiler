@@ -21,6 +21,11 @@ fn eval_statement(statement: &Statement, env: Rc<RefCell<Environment>>) -> EvalR
             Ok(Object::Return(Box::new(result)))
         },
         Statement::Return(None) => Ok(Object::Return(Box::new(Object::Null))),
+        Statement::Let(name, exp) => {
+            let result = eval_expression(exp, Rc::clone(&env))?;
+            env.borrow_mut().set(name, result.clone());
+            Ok(result)
+        }
         _ => Ok(Object::Null),
     }
 }
@@ -32,6 +37,7 @@ fn eval_expression(expression: &Expression, env: Rc<RefCell<Environment>>) -> Ev
         Expression::Prefix(prefix, expression) => eval_prefix_expression(prefix, expression.as_ref(), env),
         Expression::Infix(infix, left_exp, right_exp) => eval_infix_expression(infix, left_exp.as_ref(), right_exp.as_ref(), env),
         Expression::If(condition, consequence, alternative) => eval_if_expression(condition.as_ref(), consequence, alternative.as_ref(), env),
+        Expression::Identifier(name) => eval_identifier(name, env),
         _ => Ok(Object::Null)
     }
 }
@@ -102,6 +108,13 @@ fn eval_block_statement(block: &BlockStatement, env: Rc<RefCell<Environment>>) -
         }
     }
     Ok(result)
+}
+
+fn eval_identifier(name: &str, env: Rc<RefCell<Environment>>) -> EvalResult {
+    if let Some(object) = env.borrow().get(name) {
+        return Ok(object.clone());
+    }
+    Err(EvalError::IdentifierNotFound(name.to_string()))
 }
 
 mod evaluator_tests {

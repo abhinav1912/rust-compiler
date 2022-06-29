@@ -16,7 +16,8 @@ pub enum Object {
 pub enum EvalError {
     UnknownPrefixOperator(Prefix, Object),
     UnknownInfixOperator(Infix, Object, Object),
-    TypeMismatch(Infix, Object, Object)
+    TypeMismatch(Infix, Object, Object),
+    IdentifierNotFound(String)
 }
 
 impl Object {
@@ -69,6 +70,7 @@ impl fmt::Display for EvalError {
                 infix,
                 right.type_name()
             ),
+            EvalError::IdentifierNotFound(string) => write!(f, "identifier not found: {}", string),
         }
     }    
 }
