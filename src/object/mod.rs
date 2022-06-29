@@ -51,6 +51,24 @@ impl fmt::Display for Object {
 
 impl fmt::Display for EvalError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        todo!()
+        match self {
+            EvalError::TypeMismatch(infix, left, right) => write!(
+                f,
+                "type mismatch: {} {} {}",
+                left.type_name(),
+                infix,
+                right.type_name()
+            ),
+            EvalError::UnknownPrefixOperator(prefix, right) => {
+                write!(f, "unknown operator: {}{}", prefix, right.type_name())
+            }
+            EvalError::UnknownInfixOperator(infix, left, right) => write!(
+                f,
+                "unknown operator: {} {} {}",
+                left.type_name(),
+                infix,
+                right.type_name()
+            ),
+        }
     }    
 }
