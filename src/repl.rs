@@ -1,5 +1,5 @@
-use crate::{lexer::Lexer, parser::{Parser, ParserError}, evaluator};
-use std::io::{self, Write};
+use crate::{lexer::Lexer, parser::{Parser, ParserError}, evaluator, object::environment::Environment};
+use std::{io::{self, Write}, rc::Rc, cell::RefCell};
 
 const PROMPT: &str = ">> ";
 
@@ -13,7 +13,8 @@ pub fn start() {
             print_parser_errors(parser.errors);
             continue;
         }
-        let evaluation = evaluator::eval(&program);
+        let env = Rc::new(RefCell::new(Environment::new()));
+        let evaluation = evaluator::eval(&program, env);
         match evaluation {
             Ok(obj) => println!("{}", obj),
             Err(err) => println!("{}", err)

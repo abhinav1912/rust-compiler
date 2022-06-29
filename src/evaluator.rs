@@ -1,9 +1,11 @@
-use crate::{ast::{Program, Statement, Expression, Prefix, Infix, BlockStatement}, object::{Object, EvalError, EvalResult}};
+use crate::ast::{Program, Statement, Expression, Prefix, Infix, BlockStatement};
+use crate::object::{Object, EvalError, EvalResult, environment::Environment};
+use std::{rc::Rc, cell::RefCell};
 
-pub fn eval(program: &Program) -> EvalResult {
+pub fn eval(program: &Program, env: Rc<RefCell<Environment>>) -> EvalResult {
     let mut result = Object::Null;
     for statement in &program.statements {
-        result = eval_statement(statement)?;
+        result = eval_statement(statement, Rc::clone(&env))?;
         if let Object::Return(value) = result {
             return Ok(*value)
         }
@@ -11,11 +13,11 @@ pub fn eval(program: &Program) -> EvalResult {
     Ok(result)
 }
 
-fn eval_statement(statement: &Statement) -> EvalResult {
+fn eval_statement(statement: &Statement, env: Rc<RefCell<Environment>>) -> EvalResult {
     match statement {
-        Statement::Expression(expression) => eval_expression(expression),
+        Statement::Expression(expression) => eval_expression(expression, env),
         Statement::Return(Some(expression)) => {
-            let result = eval_expression(expression)?;
+            let result = eval_expression(expression, Rc::clone(&env))?;
             Ok(Object::Return(Box::new(result)))
         },
         Statement::Return(None) => Ok(Object::Return(Box::new(Object::Null))),
@@ -23,19 +25,19 @@ fn eval_statement(statement: &Statement) -> EvalResult {
     }
 }
 
-fn eval_expression(expression: &Expression) -> EvalResult {
+fn eval_expression(expression: &Expression, env: Rc<RefCell<Environment>>) -> EvalResult {
     match expression {
         Expression::IntegerLiteral(value) => Ok(Object::Integer(*value)),
         Expression::Boolean(value) => Ok(Object::Boolean(*value)),
-        Expression::Prefix(prefix, expression) => eval_prefix_expression(prefix, expression),
-        Expression::Infix(infix, left_exp, right_exp) => eval_infix_expression(infix, left_exp, right_exp),
-        Expression::If(condition, consequence, alternative) => eval_if_expression(condition.as_ref(), consequence, alternative.as_ref()),
+        Expression::Prefix(prefix, expression) => eval_prefix_expression(prefix, expression.as_ref(), env),
+        Expression::Infix(infix, left_exp, right_exp) => eval_infix_expression(infix, left_exp.as_ref(), right_exp.as_ref(), env),
+        Expression::If(condition, consequence, alternative) => eval_if_expression(condition.as_ref(), consequence, alternative.as_ref(), env),
         _ => Ok(Object::Null)
     }
 }
 
-fn eval_prefix_expression(prefix: &Prefix, expression: &Expression) -> EvalResult {
-    let obj = eval_expression(expression)?;
+fn eval_prefix_expression(prefix: &Prefix, expression: &Expression, env: Rc<RefCell<Environment>>) -> EvalResult {
+    let obj = eval_expression(expression, env)?;
     match prefix {
         Prefix::Bang => Ok(Object::Boolean(!obj.is_truthy())),
         Prefix::Minus => match obj {
@@ -45,9 +47,9 @@ fn eval_prefix_expression(prefix: &Prefix, expression: &Expression) -> EvalResul
     }
 }
 
-fn eval_infix_expression(infix: &Infix, left_exp: &Expression, right_exp: &Expression) -> EvalResult {
-    let left_obj = eval_expression(left_exp)?;
-    let right_obj = eval_expression(right_exp)?;
+fn eval_infix_expression(infix: &Infix, left_exp: &Expression, right_exp: &Expression, env: Rc<RefCell<Environment>>) -> EvalResult {
+    let left_obj = eval_expression(left_exp, Rc::clone(&env))?;
+    let right_obj = eval_expression(right_exp, env)?;
     match (left_obj, right_obj) {
         (Object::Integer(left), Object::Integer(right)) => eval_integer_infix_expression(infix, left, right),
         (Object::Boolean(left), Object::Boolean(right)) => eval_boolean_infix_expression(infix, left, right),
@@ -80,21 +82,21 @@ fn eval_boolean_infix_expression(infix: &Infix, left: bool, right: bool) -> Eval
     }
 }
 
-fn eval_if_expression(condition: &Expression, consequence: &BlockStatement, alternative: Option<&BlockStatement>) -> EvalResult {
-    let result = eval_expression(condition)?;
+fn eval_if_expression(condition: &Expression, consequence: &BlockStatement, alternative: Option<&BlockStatement>, env: Rc<RefCell<Environment>>) -> EvalResult {
+    let result = eval_expression(condition, Rc::clone(&env))?;
     if result.is_truthy() {
-        eval_block_statement(consequence)
+        eval_block_statement(consequence, env)
     } else {
         alternative
-        .map(|a| eval_block_statement(a))
+        .map(|a| eval_block_statement(a, env))
         .unwrap_or(Ok(Object::Null))
     }
 }
 
-fn eval_block_statement(block: &BlockStatement) -> EvalResult {
+fn eval_block_statement(block: &BlockStatement, env: Rc<RefCell<Environment>>) -> EvalResult {
     let mut result = Object::Null;
     for statement in &block.statements {
-        result = eval_statement(statement)?;
+        result = eval_statement(statement, Rc::clone(&env))?;
         if let Object::Return(_) = result {
             return Ok(result)
         }
@@ -103,7 +105,11 @@ fn eval_block_statement(block: &BlockStatement) -> EvalResult {
 }
 
 mod evaluator_tests {
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
     use crate::evaluator;
+    use crate::object::environment::Environment;
     use crate::{parser::Parser, object::EvalResult, lexer::Lexer};
 
     #[test]
@@ -211,6 +217,7 @@ mod evaluator_tests {
         let mut parser = Parser::new_parser(lexer);
 
         let program = parser.parse_program();
-        evaluator::eval(&program)
+        let env = Rc::new(RefCell::new(Environment::new()));
+        evaluator::eval(&program, env)
     }
 }
