@@ -1,6 +1,8 @@
 pub mod environment;
-use std::fmt;
-use crate::ast::{Prefix, Infix};
+use std::{fmt, rc::Rc, cell::RefCell};
+use crate::ast::{Prefix, Infix, BlockStatement};
+
+use self::environment::Environment;
 
 pub type EvalResult = Result<Object, EvalError>;
 
@@ -9,6 +11,7 @@ pub enum Object {
     Integer(i64),
     Boolean(bool),
     Return(Box<Object>),
+    Function(Vec<String>, BlockStatement, Rc<RefCell<Environment>>),
     Null
 }
 
@@ -35,6 +38,7 @@ impl Object {
             Object::Integer(_) => "INTEGER",
             Object::Null => "NULL",
             Object::Return(_) => "RETURN",
+            Object::Function(_, _, _) => "FUNCTION",
         }
     }
 }
@@ -46,6 +50,7 @@ impl fmt::Display for Object {
             Object::Boolean(value) => write!(f, "{}", value),
             Object::Null => write!(f, "null"),
             Object::Return(_) => todo!(),
+            Object::Function(params, body, _) => write!(f, "fn({}) {{\n{}\n}}", params.join(", "), body),
         }
     }
 }

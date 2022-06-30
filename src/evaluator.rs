@@ -38,6 +38,7 @@ fn eval_expression(expression: &Expression, env: Rc<RefCell<Environment>>) -> Ev
         Expression::Infix(infix, left_exp, right_exp) => eval_infix_expression(infix, left_exp.as_ref(), right_exp.as_ref(), env),
         Expression::If(condition, consequence, alternative) => eval_if_expression(condition.as_ref(), consequence, alternative.as_ref(), env),
         Expression::Identifier(name) => eval_identifier(name, env),
+        Expression::FunctionLiteral(params, body) => Ok(Object::Function(params.to_vec(), body.clone(), env.clone())),
         _ => Ok(Object::Null)
     }
 }
