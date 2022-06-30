@@ -257,6 +257,26 @@ mod evaluator_tests {
         ]);
     }
 
+    #[test]
+    fn function_application() {
+        expect_values(vec![
+            ("let identity = fn(x) { x; }; identity(5);", "5"),
+            ("let identity = fn(x) { return x; }; identity(5);", "5"),
+            ("let double = fn(x) { x * 2; }; double(5);", "10"),
+            ("let add = fn(x, y) { x + y; }; add(10, 23);", "33"),
+            (
+                "let add = fn(x, y) { x + y; }; add(3 + 4, add(10, 23));",
+                "40",
+            ),
+            ("fn(x) { x; }(5);", "5"),
+            ("fn(x) { x; }(1); 5;", "5"),
+        ]);
+        expect_errors(vec![(
+            "let add = fn(x, y) { x + y }; add(123); 3;",
+            "wrong number of arguments: expected 2, given 1",
+        )]);
+    }
+
     fn expect_values(tests: Vec<(&str, &str)>) {
         for (input, expected) in &tests {
             match eval_input(input) {
@@ -280,5 +300,18 @@ mod evaluator_tests {
         let program = parser.parse_program();
         let env = Rc::new(RefCell::new(Environment::new()));
         evaluator::eval(&program, env)
+    }
+
+    fn expect_errors(tests: Vec<(&str, &str)>) {
+        for (input, expected_message) in &tests {
+            match eval_input(input) {
+                Ok(obj) => {
+                    panic!("no error object returned. got=`{}` for `{}`", obj, input);
+                }
+                Err(err) => {
+                    assert_eq!(&err.to_string(), expected_message, "for `{}`", input);
+                }
+            }
+        }
     }
 }
