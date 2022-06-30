@@ -118,6 +118,23 @@ fn eval_identifier(name: &str, env: Rc<RefCell<Environment>>) -> EvalResult {
     Err(EvalError::IdentifierNotFound(name.to_string()))
 }
 
+fn eval_expressions(expressions: &[Expression], env: Rc<RefCell<Environment>>) -> Result<Vec<Object>, EvalError> {
+    let mut results = vec![];
+    for expression in expressions {
+        results.push(eval_expression(expression, Rc::clone(&env))?);
+    }
+    Ok(results)
+}
+
+fn apply_function(function: Object, arguments: Vec<Object>) -> EvalResult {
+    match function {
+        Object::Function(params, body, env) => {
+            Ok(Object::Null)
+        },
+        _ => Err(EvalError::NotCallable(function.clone()))
+    }
+}
+
 mod evaluator_tests {
     use std::cell::RefCell;
     use std::rc::Rc;

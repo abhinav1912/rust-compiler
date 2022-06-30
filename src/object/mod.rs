@@ -20,7 +20,8 @@ pub enum EvalError {
     UnknownPrefixOperator(Prefix, Object),
     UnknownInfixOperator(Infix, Object, Object),
     TypeMismatch(Infix, Object, Object),
-    IdentifierNotFound(String)
+    IdentifierNotFound(String),
+    NotCallable(Object)
 }
 
 impl Object {
@@ -76,6 +77,11 @@ impl fmt::Display for EvalError {
                 right.type_name()
             ),
             EvalError::IdentifierNotFound(string) => write!(f, "identifier not found: {}", string),
+            EvalError::NotCallable(object) => write!(
+                f,
+                "not a closure or builtin function: {}",
+                object.type_name()
+            ),
         }
     }    
 }
