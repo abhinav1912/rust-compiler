@@ -1,9 +1,10 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc, cell::RefCell};
 use crate::object::Object;
 
 #[derive(Debug, PartialEq, Default)]
 pub struct Environment {
-    store: HashMap<String, Object>
+    store: HashMap<String, Object>,
+    outer: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
@@ -20,5 +21,9 @@ impl Environment {
 
     pub fn set(&mut self, name: &str, value: Object) {
         self.store.insert(name.to_string(), value);
+    }
+
+    pub fn extend(outer: Rc<RefCell<Self>>) -> Environment {
+        Environment { store: HashMap::new(), outer: Some(outer) }
     }
 }
