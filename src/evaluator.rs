@@ -1,4 +1,5 @@
 use crate::ast::{Program, Statement, Expression, Prefix, Infix, BlockStatement};
+use crate::object::assert_argument_count;
 use crate::object::{Object, EvalError, EvalResult, environment::Environment};
 use std::{rc::Rc, cell::RefCell};
 
@@ -39,6 +40,11 @@ fn eval_expression(expression: &Expression, env: Rc<RefCell<Environment>>) -> Ev
         Expression::If(condition, consequence, alternative) => eval_if_expression(condition.as_ref(), consequence, alternative.as_ref(), env),
         Expression::Identifier(name) => eval_identifier(name, env),
         Expression::FunctionLiteral(params, body) => Ok(Object::Function(params.to_vec(), body.clone(), env.clone())),
+        Expression::Call(func, args) => {
+            let function = eval_expression(func, Rc::clone(&env))?;
+            let args = eval_expressions(args, env)?;
+            apply_function(function, args)
+        }
         _ => Ok(Object::Null)
     }
 }
@@ -129,9 +135,33 @@ fn eval_expressions(expressions: &[Expression], env: Rc<RefCell<Environment>>) -
 fn apply_function(function: Object, arguments: Vec<Object>) -> EvalResult {
     match function {
         Object::Function(params, body, env) => {
-            Ok(Object::Null)
+            assert_argument_count(params.len(), &arguments)?;
+            let new_env = extend_function_env(params, arguments, env);
+            let evaluated = eval_block_statement(&body, new_env)?;
+            unwrap_return_value(evaluated)
+
         },
         _ => Err(EvalError::NotCallable(function.clone()))
+    }
+}
+
+fn extend_function_env(params: Vec<String>, arguments: Vec<Object>, env: Rc<RefCell<Environment>>) -> Rc<RefCell<Environment>> {
+    let new_env = Rc::new(RefCell::new(Environment::extend(env)));
+    for (i, param) in params.iter().enumerate() {
+        let arg = or_null(arguments.get(i));
+        new_env.borrow_mut().set(param, arg);
+    }
+    new_env
+}
+
+fn or_null(option: Option<&Object>) -> Object {
+    option.cloned().unwrap_or(Object::Null)
+}
+
+fn unwrap_return_value(obj: Object) -> EvalResult {
+    match obj {
+        Object::Return(value) => Ok(*value),
+        _ => Ok(obj),
     }
 }
 

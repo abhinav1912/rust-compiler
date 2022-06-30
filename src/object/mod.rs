@@ -21,7 +21,8 @@ pub enum EvalError {
     UnknownInfixOperator(Infix, Object, Object),
     TypeMismatch(Infix, Object, Object),
     IdentifierNotFound(String),
-    NotCallable(Object)
+    NotCallable(Object),
+    WrongArgumentCount {expected: usize, given: usize}
 }
 
 impl Object {
@@ -82,6 +83,21 @@ impl fmt::Display for EvalError {
                 "not a closure or builtin function: {}",
                 object.type_name()
             ),
+            EvalError::WrongArgumentCount { expected, given } => write!(
+                f,
+                "wrong number of arguments: expected {}, given {}",
+                expected, given
+            ),
         }
     }    
+}
+
+pub fn assert_argument_count(expected: usize, arguments: &[Object]) -> Result<(), EvalError> {
+    if arguments.len() != expected {
+        return Err(EvalError::WrongArgumentCount { 
+            expected: expected,
+            given: arguments.len() 
+        })
+    }
+    Ok(())
 }
