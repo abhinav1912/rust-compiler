@@ -27,7 +27,8 @@ pub enum EvalError {
     TypeMismatch(Infix, Object, Object),
     IdentifierNotFound(String),
     NotCallable(Object),
-    WrongArgumentCount {expected: usize, given: usize}
+    WrongArgumentCount {expected: usize, given: usize},
+    UnsupportedArguments(String, Vec<Object>)
 }
 
 impl Object {
@@ -96,6 +97,16 @@ impl fmt::Display for EvalError {
                 f,
                 "wrong number of arguments: expected {}, given {}",
                 expected, given
+            ),
+            EvalError::UnsupportedArguments(name, arguments) => write!(
+                f,
+                "unsupported arguments to `{}`: {}",
+                name,
+                arguments
+                    .iter()
+                    .map(|a| a.type_name())
+                    .collect::<Vec<&str>>()
+                    .join(", ")
             ),
         }
     }    

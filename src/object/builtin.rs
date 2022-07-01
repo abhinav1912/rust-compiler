@@ -1,4 +1,4 @@
-use crate::object::Object;
+use crate::object::{Object, EvalResult, EvalError, assert_argument_count};
 
 pub struct Builtin {
     pub name: &'static str,
@@ -15,8 +15,16 @@ macro_rules! builtin {
 }
 
 pub const BUILTINS: &[Builtin] = &[
-    
+    builtin!(len)
 ];
+
+fn len(arguments: Vec<Object>) -> EvalResult {
+    assert_argument_count(1, &arguments)?;
+    match &arguments[0] {
+        Object::String(value) => Ok(Object::Integer(value.len() as i64)),
+        _ => Err(EvalError::UnsupportedArguments("len".to_string(), arguments))
+    }
+}
 
 pub fn lookup(name: &str) -> Option<Object> {
     if name == "null" {

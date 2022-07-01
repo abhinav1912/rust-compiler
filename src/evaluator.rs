@@ -1,5 +1,5 @@
 use crate::ast::{Program, Statement, Expression, Prefix, Infix, BlockStatement};
-use crate::object::assert_argument_count;
+use crate::object::{assert_argument_count, builtin};
 use crate::object::{Object, EvalError, EvalResult, environment::Environment};
 use std::{rc::Rc, cell::RefCell};
 
@@ -133,6 +133,9 @@ fn eval_block_statement(block: &BlockStatement, env: Rc<RefCell<Environment>>) -
 fn eval_identifier(name: &str, env: Rc<RefCell<Environment>>) -> EvalResult {
     if let Some(object) = env.borrow().get(name) {
         return Ok(object.clone());
+    }
+    if let Some(obj) = builtin::lookup(name) {
+        return Ok(obj)
     }
     Err(EvalError::IdentifierNotFound(name.to_string()))
 }
