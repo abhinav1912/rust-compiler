@@ -89,9 +89,7 @@ impl Parser {
         } else {
             return Err(ParserError::ExpectedIdentifier(self.peek_token.clone()))
         }
-        if !self.expect_peek(Token::Assign) {
-            return Err(ParserError::ExpectedAssign(self.peek_token.clone()))
-        }
+        self.expect_peek(Token::Assign, ParserError::ExpectedAssign)?;
 
         self.next_token();
         let statement = Statement::Let(name, self.parse_expression(Precedence::Lowest)?);
@@ -205,35 +203,26 @@ impl Parser {
     fn parse_grouped_expression(&mut self) -> Result<Expression> {
         self.next_token();
         let expression = self.parse_expression(Precedence::Lowest)?;
-        if !self.expect_peek(Token::Rparen) {
-            return Err(ParserError::ExpectedRParenToken(self.peek_token.clone()))
-        }
+        self.expect_peek(Token::Rparen, ParserError::ExpectedRParenToken)?;
         Ok(expression)
     }
 
     fn parse_if_expression(&mut self) -> Result<Expression> {
-        if !self.expect_peek(Token::Lparen) {
-            return Err(ParserError::ExpectedLParenToken(self.peek_token.clone()))
-        }
+        self.expect_peek(Token::Lparen, ParserError::ExpectedLParenToken)?;
 
         self.next_token();
         let condition = self.parse_expression(Precedence::Lowest)?;
-        if !self.expect_peek(Token::Rparen) {
-            return Err(ParserError::ExpectedRParenToken(self.peek_token.clone()))
-        }
+        
+        self.expect_peek(Token::Rparen, ParserError::ExpectedRParenToken)?;
 
-        if !self.expect_peek(Token::Lbrace) {
-            return Err(ParserError::ExpectedLBraceToken(self.peek_token.clone()))
-        }
+        self.expect_peek(Token::Lbrace, ParserError::ExpectedLBraceToken)?;
 
         let consequence = self.parse_block_statement()?;
         let mut alternative: Option<BlockStatement> = None;
         if self.peek_token_is(Token::Else) {
             self.next_token();
 
-            if !self.expect_peek(Token::Lbrace) {
-                return Err(ParserError::ExpectedLBraceToken(self.peek_token.clone()))
-            }
+            self.expect_peek(Token::Lbrace, ParserError::ExpectedLBraceToken)?;
 
             alternative = Some(self.parse_block_statement()?);
         }
@@ -254,14 +243,10 @@ impl Parser {
     }
 
     fn parse_function_literal(&mut self) -> Result<Expression> {
-        if !self.expect_peek(Token::Lparen) {
-            return Err(ParserError::ExpectedLParenToken(self.peek_token.clone()))
-        }
+        self.expect_peek(Token::Lparen, ParserError::ExpectedLParenToken)?;
 
         let parameters = self.parse_function_parameters()?;
-        if !self.expect_peek(Token::Lbrace) {
-            return Err(ParserError::ExpectedLBraceToken(self.peek_token.clone()));
-        }
+        self.expect_peek(Token::Lbrace, ParserError::ExpectedLBraceToken)?;
         let body = self.parse_block_statement()?;
         return Ok(Expression::FunctionLiteral(parameters, body))
     }
@@ -289,9 +274,7 @@ impl Parser {
             expressions.push(self.parse_expression(Precedence::Lowest)?);
             // cur_token: the last token of the current expression
         }
-        if !self.expect_peek(closing_token) {
-
-        }
+        self.expect_peek(closing_token, expected)?;
         // cur_token: closing_token
 
         Ok(expressions)
@@ -316,9 +299,7 @@ impl Parser {
             // curr_token: current param
             identifiers.push(self.parse_identifier_string()?);
         }
-        if !self.expect_peek(Token::Rparen) {
-            return Err(ParserError::ExpectedRParenToken(self.peek_token.clone()));
-        }
+        self.expect_peek(Token::Rparen, ParserError::ExpectedRParenToken)?;
         Ok(identifiers)
     }
 
@@ -377,12 +358,12 @@ impl Parser {
         return self.peek_token == token
     }
 
-    fn expect_peek(&mut self, token: Token) -> bool {
-        if self.peek_token_is(token) {
-            self.next_token();
-            return true
+    fn expect_peek(&mut self, token: Token, expected: fn(Token) -> ParserError) -> Result<()> {
+        if !self.peek_token_is(token) {
+            return Err(expected(self.peek_token.clone()))
         }
-        false
+        self.next_token();
+        Ok(())
     }
 }
 
