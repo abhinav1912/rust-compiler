@@ -67,6 +67,7 @@ fn eval_infix_expression(infix: &Infix, left_exp: &Expression, right_exp: &Expre
     match (left_obj, right_obj) {
         (Object::Integer(left), Object::Integer(right)) => eval_integer_infix_expression(infix, left, right),
         (Object::Boolean(left), Object::Boolean(right)) => eval_boolean_infix_expression(infix, left, right),
+        (Object::String(left), Object::String(right)) => eval_string_infix_expression(infix, &left, &right),
         (left, right) => Err(EvalError::TypeMismatch(infix.clone(), left, right))
     }
 }
@@ -93,6 +94,17 @@ fn eval_boolean_infix_expression(infix: &Infix, left: bool, right: bool) -> Eval
             Object::Boolean(left),
             Object::Boolean(right)
         )),
+    }
+}
+
+fn eval_string_infix_expression(infix: &Infix, left: &str, right: &str) -> EvalResult {
+    match infix {
+        Infix::Plus => Ok(Object::String([left, right].concat())),
+       _ => Err(EvalError::UnknownInfixOperator(
+            infix.clone(),
+            Object::String(left.to_string()),
+            Object::String(right.to_string())
+        ))
     }
 }
 
