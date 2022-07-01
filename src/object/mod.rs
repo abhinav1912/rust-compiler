@@ -1,10 +1,13 @@
 pub mod environment;
+pub mod builtin;
+
 use std::{fmt, rc::Rc, cell::RefCell};
 use crate::ast::{Prefix, Infix, BlockStatement};
 
 use self::environment::Environment;
 
 pub type EvalResult = Result<Object, EvalError>;
+pub type BuiltinFunction = fn(Vec<Object>) -> EvalResult;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
@@ -13,6 +16,7 @@ pub enum Object {
     Return(Box<Object>),
     Function(Vec<String>, BlockStatement, Rc<RefCell<Environment>>),
     String(String),
+    Builtin(BuiltinFunction),
     Null
 }
 
@@ -43,6 +47,7 @@ impl Object {
             Object::Return(_) => "RETURN",
             Object::Function(_, _, _) => "FUNCTION",
             Object::String(_) => "STRING",
+            Object::Builtin(_) => "BUILTIN",
         }
     }
 }
@@ -56,6 +61,7 @@ impl fmt::Display for Object {
             Object::Return(value) => write!(f, "{}", *value),
             Object::Function(params, body, _) => write!(f, "fn({}) {{\n{}\n}}", params.join(", "), body),
             Object::String(value) => write!(f, "\"{}\"", value),
+            Object::Builtin(_) => write!(f, "builtin function"),
         }
     }
 }
