@@ -12,6 +12,7 @@ pub enum Object {
     Boolean(bool),
     Return(Box<Object>),
     Function(Vec<String>, BlockStatement, Rc<RefCell<Environment>>),
+    String(String),
     Null
 }
 
@@ -41,6 +42,7 @@ impl Object {
             Object::Null => "NULL",
             Object::Return(_) => "RETURN",
             Object::Function(_, _, _) => "FUNCTION",
+            Object::String(_) => "STRING",
         }
     }
 }
@@ -51,8 +53,9 @@ impl fmt::Display for Object {
             Object::Integer(value) => write!(f, "{}", value),
             Object::Boolean(value) => write!(f, "{}", value),
             Object::Null => write!(f, "null"),
-            Object::Return(_) => todo!(),
+            Object::Return(value) => write!(f, "{}", *value),
             Object::Function(params, body, _) => write!(f, "fn({}) {{\n{}\n}}", params.join(", "), body),
+            Object::String(value) => write!(f, "\"{}\"", value),
         }
     }
 }
