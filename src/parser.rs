@@ -16,6 +16,7 @@ pub enum ParserError {
     ExpectedRParenToken(Token),
     ExpectedLBraceToken(Token),
     ExpectedRBraceToken(Token),
+    ExpectedStringToken(Token),
     ParseInt(String),
     ParsingNotImplemented
 }
@@ -145,6 +146,7 @@ impl Parser {
             Token::Lparen => Some(Parser::parse_grouped_expression),
             Token::If => Some(Parser::parse_if_expression),
             Token::Function => Some(Parser::parse_function_literal),
+            Token::String(_) => Some(Parser::parse_string_literal),
             _ => None
         }
     }
@@ -352,6 +354,13 @@ impl Parser {
         }
     }
 
+    fn parse_string_literal(&mut self) -> Result<Expression> {
+        if let Token::String(value) = &self.curr_token {
+            return Ok(Expression::StringLiteral(value.to_string()))
+        }
+        Err(ParserError::ExpectedStringToken(self.curr_token.clone()))
+    }
+
     fn curr_token_is(&self, token: Token) -> bool {
         return self.curr_token == token;
     }
@@ -383,6 +392,7 @@ impl fmt::Display for ParserError {
             ParserError::ExpectedLParenToken(token) => write!(f, "expected (, got {}", token),
             ParserError::ExpectedLBraceToken(token) => write!(f, "expected {{, got {}", token),
             ParserError::ExpectedRBraceToken(token) => write!(f, "expected }}, got {}", token),
+            ParserError::ExpectedStringToken(token) => write!(f, "expected string, got {}", token),
         }
     }
 }
