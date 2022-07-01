@@ -17,6 +17,8 @@ pub enum ParserError {
     ExpectedLBraceToken(Token),
     ExpectedRBraceToken(Token),
     ExpectedStringToken(Token),
+    ExpectedLBracketToken(Token),
+    ExpectedRBracketToken(Token),
     ParseInt(String),
     ParsingNotImplemented
 }
@@ -147,6 +149,7 @@ impl Parser {
             Token::If => Some(Parser::parse_if_expression),
             Token::Function => Some(Parser::parse_function_literal),
             Token::String(_) => Some(Parser::parse_string_literal),
+            Token::Lbracket => Some(Parser::parse_array_literal),
             _ => None
         }
     }
@@ -264,11 +267,11 @@ impl Parser {
     }
 
     fn parse_call_expression(&mut self, function: Expression) -> Result<Expression> {
-        let arguments = self.parse_expressions(Token::Rparen)?;
+        let arguments = self.parse_expressions(Token::Rparen, ParserError::ExpectedRParenToken)?;
         Ok(Expression::Call(Box::new(function), arguments))
     }
 
-    fn parse_expressions(&mut self, closing_token: Token) -> Result<Vec<Expression>> {
+    fn parse_expressions(&mut self, closing_token: Token, expected: fn(Token) -> ParserError) -> Result<Vec<Expression>> {
         let mut expressions = vec![];
 
         if self.peek_token == closing_token {
@@ -361,6 +364,11 @@ impl Parser {
         Err(ParserError::ExpectedStringToken(self.curr_token.clone()))
     }
 
+    fn parse_array_literal(&mut self) -> Result<Expression> {
+        let exps = self.parse_expressions(Token::Rbracket, ParserError::ExpectedRBracketToken)?;
+        Ok(Expression::Array(exps))
+    }
+
     fn curr_token_is(&self, token: Token) -> bool {
         return self.curr_token == token;
     }
@@ -393,6 +401,8 @@ impl fmt::Display for ParserError {
             ParserError::ExpectedLBraceToken(token) => write!(f, "expected {{, got {}", token),
             ParserError::ExpectedRBraceToken(token) => write!(f, "expected }}, got {}", token),
             ParserError::ExpectedStringToken(token) => write!(f, "expected string, got {}", token),
+            ParserError::ExpectedLBracketToken(token) => write!(f, "expected [, got {}", token),
+            ParserError::ExpectedRBracketToken(token) => write!(f, "expected ], got {}", token),
         }
     }
 }
