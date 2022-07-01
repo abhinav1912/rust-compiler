@@ -17,3 +17,15 @@ macro_rules! builtin {
 pub const BUILTINS: &[Builtin] = &[
     
 ];
+
+pub fn lookup(name: &str) -> Option<Object> {
+    if name == "null" {
+        return Some(Object::Null)
+    }
+    for builtin in BUILTINS {
+        if builtin.name == name {
+            return Some(builtin.builtin.clone())
+        }
+    }
+    None
+}
