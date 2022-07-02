@@ -37,7 +37,8 @@ pub enum Precedence {
     Sum,
     Product,
     Prefix,
-    Call
+    Call,
+    Index
 }
 
 type PrefixParseFn = fn(&mut Parser) -> Result<Expression>;
@@ -163,6 +164,7 @@ impl Parser {
             Token::Lt => Some(Parser::parse_infix_expression),
             Token::Gt => Some(Parser::parse_infix_expression),
             Token::Lparen => Some(Parser::parse_call_expression),
+            Token::Lbracket => Some(Parser::parse_index_expression),
             _ => None,
         }
     }
@@ -322,6 +324,7 @@ impl Parser {
             Token::Slash => (Precedence::Product, Some(Infix::Slash)),
             Token::Asterisk => (Precedence::Product, Some(Infix::Asterisk)),
             Token::Lparen => (Precedence::Call, None),
+            Token::Lbracket => (Precedence::Index, None),
             _ => (Precedence::Lowest, None),
         }
     }
@@ -348,6 +351,15 @@ impl Parser {
     fn parse_array_literal(&mut self) -> Result<Expression> {
         let exps = self.parse_expressions(Token::Rbracket, ParserError::ExpectedRBracketToken)?;
         Ok(Expression::Array(exps))
+    }
+
+    fn parse_index_expression(&mut self, array: Expression) -> Result<Expression> {
+        // curr_token: [
+        self.next_token();
+        let index = self.parse_expression(Precedence::Lowest)?;
+        self.expect_peek(Token::Rbracket, ParserError::ExpectedRBracketToken)?;
+        let exp = Expression::Index(Box::new(array), Box::new(index));
+        Ok(exp)
     }
 
     fn curr_token_is(&self, token: Token) -> bool {
