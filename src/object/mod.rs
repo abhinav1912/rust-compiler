@@ -1,7 +1,7 @@
 pub mod environment;
 pub mod builtin;
 
-use std::{fmt, rc::Rc, cell::RefCell};
+use std::{fmt, rc::Rc, cell::RefCell, collections::HashMap};
 use crate::ast::{Prefix, Infix, BlockStatement};
 
 use self::environment::Environment;
@@ -17,6 +17,9 @@ pub enum Object {
     Function(Vec<String>, BlockStatement, Rc<RefCell<Environment>>),
     String(String),
     Builtin(BuiltinFunction),
+    Array(Vec<Object>),
+    Float(f64),
+    Hash(HashMap<HashKey, Object>),
     Null
 }
 
@@ -29,6 +32,13 @@ pub enum EvalError {
     NotCallable(Object),
     WrongArgumentCount {expected: usize, given: usize},
     UnsupportedArguments(String, Vec<Object>)
+}
+
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+pub enum HashKey {
+    Integer(i64),
+    String(String),
+    Boolean(bool),
 }
 
 impl Object {
@@ -49,6 +59,9 @@ impl Object {
             Object::Function(_, _, _) => "FUNCTION",
             Object::String(_) => "STRING",
             Object::Builtin(_) => "BUILTIN",
+            Object::Array(_) => "ARRAY",
+            Object::Float(_) => "FLOAT",
+            Object::Hash(_) => "HASH",
         }
     }
 }
@@ -63,6 +76,24 @@ impl fmt::Display for Object {
             Object::Function(params, body, _) => write!(f, "fn({}) {{\n{}\n}}", params.join(", "), body),
             Object::String(value) => write!(f, "\"{}\"", value),
             Object::Builtin(_) => write!(f, "builtin function"),
+            Object::Array(values) => {
+                let value_list = values
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(f, "[{}]", value_list)
+            },
+            Object::Float(value) => write!(f, "{}", value),
+            Object::Hash(pairs) => {
+                // Print keys with a stable order for testing.
+                let mut items = pairs
+                    .iter()
+                    .map(|(k, v)| format!("{}: {}", k, v))
+                    .collect::<Vec<String>>();
+                items.sort();
+                write!(f, "{{{}}}", items.join(", "))
+            }
         }
     }
 }
@@ -110,6 +141,16 @@ impl fmt::Display for EvalError {
             ),
         }
     }    
+}
+
+impl fmt::Display for HashKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            HashKey::Integer(value) => write!(f, "{}", value),
+            HashKey::String(value) => write!(f, "\"{}\"", value),
+            HashKey::Boolean(value) => write!(f, "{}", value),
+        }
+    }
 }
 
 pub fn assert_argument_count(expected: usize, arguments: &[Object]) -> Result<(), EvalError> {
