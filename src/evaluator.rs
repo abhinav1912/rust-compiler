@@ -49,7 +49,8 @@ fn eval_expression(expression: &Expression, env: Rc<RefCell<Environment>>) -> Ev
         Expression::Array(elements) => {
             let values = eval_expressions(elements, env)?;
             Ok(Object::Array(values))
-        }
+        },
+        Expression::Index(left, index) => eval_index_expression(left, index, env),
         _ => Ok(Object::Null)
     }
 }
@@ -142,6 +143,15 @@ fn eval_identifier(name: &str, env: Rc<RefCell<Environment>>) -> EvalResult {
         return Ok(obj)
     }
     Err(EvalError::IdentifierNotFound(name.to_string()))
+}
+
+fn eval_index_expression(left: &Expression, index: &Expression, env: Rc<RefCell<Environment>>) -> EvalResult {
+    let left_evaluated = eval_expression(left, env.clone())?;
+    let index_evaluated = eval_expression(index, env)?;
+    match (left_evaluated, index_evaluated) {
+        (Object::Array(array), Object::Integer(value)) => Ok(or_null(array.get(value as usize))),
+        (l, i) => Err(EvalError::UnknownIndexOperator(l, i)),
+    }
 }
 
 fn eval_expressions(expressions: &[Expression], env: Rc<RefCell<Environment>>) -> Result<Vec<Object>, EvalError> {

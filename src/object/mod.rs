@@ -31,7 +31,8 @@ pub enum EvalError {
     IdentifierNotFound(String),
     NotCallable(Object),
     WrongArgumentCount {expected: usize, given: usize},
-    UnsupportedArguments(String, Vec<Object>)
+    UnsupportedArguments(String, Vec<Object>),
+    UnknownIndexOperator(Object, Object)
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -138,6 +139,12 @@ impl fmt::Display for EvalError {
                     .map(|a| a.type_name())
                     .collect::<Vec<&str>>()
                     .join(", ")
+            ),
+            EvalError::UnknownIndexOperator(left, index) => write!(
+                f,
+                "unknown operator: {}[{}]",
+                left.type_name(),
+                index.type_name()
             ),
         }
     }    
