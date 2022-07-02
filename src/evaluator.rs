@@ -45,6 +45,10 @@ fn eval_expression(expression: &Expression, env: Rc<RefCell<Environment>>) -> Ev
             let function = eval_expression(func, Rc::clone(&env))?;
             let args = eval_expressions(args, env)?;
             apply_function(function, args)
+        },
+        Expression::Array(elements) => {
+            let values = eval_expressions(elements, env)?;
+            Ok(Object::Array(values))
         }
         _ => Ok(Object::Null)
     }
