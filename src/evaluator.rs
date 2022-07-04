@@ -308,6 +308,54 @@ mod evaluator_tests {
         )]);
     }
 
+    #[test]
+    fn array_map() {
+        let map = "
+            let map = fn(array, func) {
+                let iter = fn(arr, acc) {
+                    if (len(arr) == 0) {
+                        acc
+                    } else {
+                        iter(rest(arr), push(acc, func(first(arr))))
+                    }
+                };
+                iter(array, [])
+            };
+        ";
+        expect_values(vec![
+            (
+                &with_def(map, "map([1, 2, 3], fn(x) { x * x })"),
+                "[1, 4, 9]",
+            ),
+            (&with_def(map, "map([2], fn(x) { 3 * x })"), "[6]"),
+            (&with_def(map, "map([], fn(x) { x * x })"), "[]"),
+        ]);
+    }
+
+    #[test]
+    fn array_reduce() {
+        let reduce = "
+            let reduce = fn(array, init, func) {
+                let iter = fn (arr, acc) {
+                    if (len(arr) == 0) {
+                        acc
+                    } else {
+                        iter(rest(arr), func(acc, first(arr)))
+                    }
+                };
+                iter(array, init);
+            };
+        ";
+        expect_values(vec![(
+            &with_def(reduce, "reduce([2, 3, 5], 1, fn(acc, x) { acc * x })"),
+            "30",
+        )]);
+    }
+
+    fn with_def(def: &str, code: &str) -> String {
+        def.to_string() + code
+    }
+
     fn expect_values(tests: Vec<(&str, &str)>) {
         for (input, expected) in &tests {
             match eval_input(input) {
