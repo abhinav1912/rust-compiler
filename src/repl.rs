@@ -24,7 +24,7 @@ pub fn start() {
 
 fn print_parser_errors(errors: Vec<ParserError>) {
     for error in errors {
-        println!("{}", error);
+        println!("\t{:?}", error);
     }
 }
 

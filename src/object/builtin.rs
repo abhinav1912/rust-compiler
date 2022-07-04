@@ -61,7 +61,7 @@ fn rest(arguments: Vec<Object>) -> EvalResult {
     assert_argument_count(1, &arguments)?;
     match &arguments[0] {
         Object::Array(array) => {
-            if array.len() < 2 {
+            if array.is_empty() {
                 return Ok(Object::Null)
             }
             let slice = array[1..].to_vec();
