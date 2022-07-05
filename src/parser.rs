@@ -19,9 +19,13 @@ pub enum ParserError {
     ExpectedStringToken(Token),
     ExpectedLBracketToken(Token),
     ExpectedRBracketToken(Token),
+    ExpectedSemicolon(Token),
+    ExpectedComma(Token),
+    ExpectedColon(Token),
     ParseInt(String),
     ParsingNotImplemented
 }
+
 pub struct Parser {
     lexer: Lexer,
     curr_token: Token,
@@ -149,6 +153,7 @@ impl Parser {
             Token::Function => Some(Parser::parse_function_literal),
             Token::String(_) => Some(Parser::parse_string_literal),
             Token::Lbracket => Some(Parser::parse_array_literal),
+            Token::Lbrace => Some(Parser::parse_hash_literal),
             _ => None
         }
     }
@@ -362,6 +367,26 @@ impl Parser {
         Ok(exp)
     }
 
+    fn parse_hash_literal(&mut self) -> Result<Expression> {
+        let mut pairs = vec![];
+        while !self.peek_token_is(Token::Rbrace) {
+            self.next_token();
+            let key = self.parse_expression(Precedence::Lowest)?;
+
+            self.expect_peek(Token::Colon, ParserError::ExpectedColon)?;
+            self.next_token();
+
+            let value = self.parse_expression(Precedence::Lowest)?;
+            pairs.push((key, value));
+            if self.peek_token != Token::Rbrace {
+                self.expect_peek(Token::Comma, ParserError::ExpectedComma)?;
+            }
+        }
+        self.expect_peek(Token::Rbrace, ParserError::ExpectedRBraceToken)?;
+
+        Ok(Expression::Hash(pairs))
+    }
+
     fn curr_token_is(&self, token: Token) -> bool {
         return self.curr_token == token;
     }
@@ -376,27 +401,6 @@ impl Parser {
         }
         self.next_token();
         Ok(())
-    }
-}
-
-impl fmt::Display for ParserError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParserError::ExpectedIdentifier(token) => write!(f, "expected identifier, got {}", token),
-            ParserError::ExpectedAssign(token) => write!(f, "expected =, got {}", token),
-            ParserError::ExpectedPrefixToken(token) => write!(f, "expected prefix, got {}", token),
-            ParserError::ExpectedInfixToken(token) => write!(f, "expected infix token, got {}", token),
-            ParserError::ParsingNotImplemented => write!(f, "parsing not implemented for token"),
-            ParserError::ExpectedIntegerToken(token) => write!(f, "expected integer, got {}", token),
-            ParserError::ParseInt(str) => write!(f, "failed to parse {} as int", str),
-            ParserError::ExpectedRParenToken(token) => write!(f, "expected ), got {}", token),
-            ParserError::ExpectedLParenToken(token) => write!(f, "expected (, got {}", token),
-            ParserError::ExpectedLBraceToken(token) => write!(f, "expected {{, got {}", token),
-            ParserError::ExpectedRBraceToken(token) => write!(f, "expected }}, got {}", token),
-            ParserError::ExpectedStringToken(token) => write!(f, "expected string, got {}", token),
-            ParserError::ExpectedLBracketToken(token) => write!(f, "expected [, got {}", token),
-            ParserError::ExpectedRBracketToken(token) => write!(f, "expected ], got {}", token),
-        }
     }
 }
 
@@ -570,12 +574,42 @@ mod tests {
         }
     }
 
+    #[test]
+    fn hash() {
+        test_parsing(vec![
+            ("{}", "{};"),
+            ("{1: 2, 2: 3}", "{1: 2, 2: 3};"),
+            ("{true: 3}", "{true: 3};"),
+            (
+                r#"{"one": 1, "two": 2, "three": 3}"#,
+                r#"{"one": 1, "two": 2, "three": 3};"#,
+            ),
+            // Duplicated entries
+            (
+                r#"{"one": 1, "one": 1, "two": 2}"#,
+                r#"{"one": 1, "one": 1, "two": 2};"#,
+            ),
+        ]);
+    }
+
+    fn test_parsing(tests: Vec<(&str, &str)>) {
+        for (input, expected) in tests {
+            let lexer = Lexer::new(input.to_owned());
+            let mut parser = Parser::new_parser(lexer);
+
+            let program = parser.parse_program();
+            check_parser_errors(parser);
+
+            assert_eq!(program.to_string(), expected);
+        }
+    }
+
     fn check_parser_errors(parser: Parser) {
         if parser.errors.len() == 0 {
             return;
         }
         for message in parser.errors.iter() {
-            println!("{}", message);
+            println!("{:?}", message);
         }
         panic!("{} parser errors occured.", parser.errors.len());
     }
