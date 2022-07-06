@@ -32,7 +32,8 @@ pub enum EvalError {
     NotCallable(Object),
     WrongArgumentCount {expected: usize, given: usize},
     UnsupportedArguments(String, Vec<Object>),
-    UnknownIndexOperator(Object, Object)
+    UnknownIndexOperator(Object, Object),
+    UnsupportedHashKey(Object)
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -40,6 +41,17 @@ pub enum HashKey {
     Integer(i64),
     String(String),
     Boolean(bool),
+}
+
+impl HashKey {
+    pub fn from_object(obj: &Object) -> Result<HashKey, EvalError> {
+        match obj {
+            Object::Integer(value) => Ok(HashKey::Integer(*value)),
+            Object::Boolean(value) => Ok(HashKey::Boolean(*value)),
+            Object::String(value) => Ok(HashKey::String(value.to_string())),
+            _ => Err(EvalError::UnsupportedHashKey(obj.clone())),
+        }
+    }
 }
 
 impl Object {
@@ -146,6 +158,9 @@ impl fmt::Display for EvalError {
                 left.type_name(),
                 index.type_name()
             ),
+            EvalError::UnsupportedHashKey(key) => {
+                write!(f, "unusable as hash key: {}", key.type_name())
+            }
         }
     }    
 }
