@@ -1,6 +1,7 @@
 use crate::ast::{Program, Statement, Expression, Prefix, Infix, BlockStatement};
-use crate::object::{assert_argument_count, builtin};
+use crate::object::{assert_argument_count, builtin, HashKey};
 use crate::object::{Object, EvalError, EvalResult, environment::Environment};
+use std::collections::HashMap;
 use std::{rc::Rc, cell::RefCell};
 
 pub fn eval(program: &Program, env: Rc<RefCell<Environment>>) -> EvalResult {
@@ -51,6 +52,7 @@ fn eval_expression(expression: &Expression, env: Rc<RefCell<Environment>>) -> Ev
             Ok(Object::Array(values))
         },
         Expression::Index(left, index) => eval_index_expression(left, index, env),
+        Expression::Hash(pairs) => eval_hash_literal(pairs, env),
         _ => Ok(Object::Null)
     }
 }
@@ -160,6 +162,17 @@ fn eval_expressions(expressions: &[Expression], env: Rc<RefCell<Environment>>) -
         results.push(eval_expression(expression, Rc::clone(&env))?);
     }
     Ok(results)
+}
+
+fn eval_hash_literal(pairs: &[(Expression, Expression)], env: Rc<RefCell<Environment>>) -> EvalResult {
+    let mut map = HashMap::new();
+    for (key, value) in pairs.iter() {
+        let key_exp = eval_expression(key, env.clone())?;
+        let val_exp = eval_expression(value, env.clone())?;
+        let hashkey = HashKey::from_object(&key_exp)?;
+        map.insert(hashkey, val_exp);
+    }
+    Ok(Object::Hash(map))
 }
 
 fn apply_function(function: Object, arguments: Vec<Object>) -> EvalResult {
