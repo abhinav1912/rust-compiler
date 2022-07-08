@@ -152,6 +152,16 @@ fn eval_index_expression(left: &Expression, index: &Expression, env: Rc<RefCell<
     let index_evaluated = eval_expression(index, env)?;
     match (left_evaluated, index_evaluated) {
         (Object::Array(array), Object::Integer(value)) => Ok(or_null(array.get(value as usize))),
+        (Object::Hash(pairs), Object::Integer(value)) => {
+            Ok(or_null(pairs.get(&HashKey::Integer(value))))
+        }
+        (Object::Hash(pairs), Object::String(value)) => {
+            Ok(or_null(pairs.get(&HashKey::String(value))))
+        }
+        (Object::Hash(pairs), Object::Boolean(value)) => {
+            Ok(or_null(pairs.get(&HashKey::Boolean(value))))
+        }
+        (Object::Hash(_), key) => Err(EvalError::UnsupportedHashKey(key)),
         (l, i) => Err(EvalError::UnknownIndexOperator(l, i)),
     }
 }
