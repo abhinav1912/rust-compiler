@@ -19,7 +19,8 @@ pub const BUILTINS: &[Builtin] = &[
     builtin!(first),
     builtin!(last),
     builtin!(rest),
-    builtin!(push)
+    builtin!(push),
+    builtin!(puts)
 ];
 
 fn len(arguments: Vec<Object>) -> EvalResult {
@@ -81,6 +82,13 @@ fn push(arguments: Vec<Object>) -> EvalResult {
         },
         _ => Err(EvalError::UnsupportedArguments("push".to_string(), arguments))
     }
+}
+
+fn puts(arguments: Vec<Object>) -> EvalResult {
+    for argument in arguments {
+        println!("{}", argument);
+    }
+    return Ok(Object::Null)
 }
 
 pub fn lookup(name: &str) -> Option<Object> {
