@@ -193,7 +193,7 @@ fn is_whitespace(ch: char) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::{self, Lexer};
+    use crate::lexer::Lexer;
     use crate::token::Token;
 
     #[test]

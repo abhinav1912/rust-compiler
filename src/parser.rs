@@ -1,7 +1,7 @@
 use crate::lexer::Lexer;
 use crate::token::Token;
 use crate::ast::{Program, Statement, Expression, Prefix, Infix, BlockStatement};
-use std::{mem, fmt};
+use std::mem;
 
 type Result<T> = std::result::Result<T, ParserError>;
 
@@ -416,7 +416,7 @@ mod tests {
         let y = 10;
         let foo = x + y;
         ";
-        let mut lexer = Lexer::new(input.to_string().to_owned());
+        let lexer = Lexer::new(input.to_string().to_owned());
         let mut parser = Parser::new_parser(lexer);
         let program = parser.parse_program();
 

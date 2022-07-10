@@ -28,7 +28,6 @@ fn eval_statement(statement: &Statement, env: Rc<RefCell<Environment>>) -> EvalR
             env.borrow_mut().set(name, result.clone());
             Ok(result)
         }
-        _ => Ok(Object::Null),
     }
 }
 
@@ -219,6 +218,7 @@ fn unwrap_return_value(obj: Object) -> EvalResult {
     }
 }
 
+#[allow(dead_code)]
 mod evaluator_tests {
     use std::cell::RefCell;
     use std::rc::Rc;

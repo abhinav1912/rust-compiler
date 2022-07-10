@@ -1,4 +1,4 @@
-use std::{fmt, vec};
+use std::fmt;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
