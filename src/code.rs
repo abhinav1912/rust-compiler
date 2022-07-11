@@ -1,3 +1,5 @@
+use std::vec;
+
 pub type Instruction = Vec<u8>;
 
 macro_rules! byte_enum {
@@ -61,6 +63,19 @@ byte_enum!(
 );
 
 pub struct Definition {
-    name: String,
-    widths: Vec<usize>
+    pub name: String,
+    pub widths: Vec<usize>
 }
+
+fn lookup_definition(byte: u8) -> Option<Definition> {
+    OpCode::from_byte(byte).map(|op_code| match op_code {
+        OpCode::Constant => Definition {
+            name: "OpConstant".to_string(),
+            widths: vec![2]
+        },
+        _ => Definition {
+            name: "Not implemented".to_string(),
+            widths: vec![0]
+        }
+    })
+} 
