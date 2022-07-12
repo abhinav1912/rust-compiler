@@ -1,6 +1,10 @@
 use std::vec;
 
-pub type Instruction = Vec<u8>;
+pub type Instructions = Vec<u8>;
+
+pub fn make(op_code: OpCode) -> Instructions {
+    return vec![op_code as u8]
+}
 
 macro_rules! byte_enum {
     (@step $_idx:expr, $name:ident, $_byte:ident, []) => {
