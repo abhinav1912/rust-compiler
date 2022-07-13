@@ -6,3 +6,4 @@ pub mod ast;
 pub mod object;
 pub mod evaluator;
 pub mod code;
+pub mod compiler;
