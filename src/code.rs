@@ -1,4 +1,4 @@
-use std::vec;
+use std::{vec, fmt};
 
 pub type Instructions = Vec<u8>;
 
@@ -82,4 +82,21 @@ fn lookup_definition(byte: u8) -> Option<Definition> {
             widths: vec![0]
         }
     })
-} 
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Constant {
+    Integer(i64),
+    Float(f64),
+    String(String)    
+}
+
+impl fmt::Display for Constant {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Constant::Integer(value) => write!(f, "{}", value),
+            Constant::Float(value) => write!(f, "{}", value),
+            Constant::String(value) => write!(f, "\"{}\"", value)
+        }
+    }
+}
