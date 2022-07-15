@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc, fmt};
 
-use crate::{ast::{Program, Infix, Statement}, code::Instructions, object::Object};
+use crate::{ast::{Program, Infix, Statement, Expression}, code::Instructions, object::Object};
 
 pub struct Compiler {
     pub constants: Rc<RefCell<Vec<Object>>>,
@@ -28,7 +28,14 @@ impl Compiler {
     }
 
     pub fn compile_statement(&mut self, statement: &Statement) -> Result<(), CompileError> {
-        return Err(CompileError::TooManyParams)
+        match statement {
+            Statement::Expression(expression) => self.compile_expression(expression),
+            _ => Err(CompileError::CompilingNotImplemented)
+        }
+    }
+
+    pub fn compile_expression(&mut self, expression: &Expression) -> Result<(), CompileError> {
+        Err(CompileError::CompilingNotImplemented)
     }
 
     pub fn bytecode(self) -> ByteCode {
@@ -44,6 +51,7 @@ pub enum CompileError {
     TooManyParams,
     TooManyLocals,
     TooManyFrees,
+    CompilingNotImplemented
 }
 
 impl fmt::Display for CompileError {
@@ -55,6 +63,7 @@ impl fmt::Display for CompileError {
             CompileError::TooManyParams => write!(f, "too many parameters for a function"),
             CompileError::TooManyLocals => write!(f, "too many local bindings in a function"),
             CompileError::TooManyFrees => write!(f, "too many free bindings in a function"),
+            CompileError::CompilingNotImplemented => write!(f, "Not implemeneted"),
         }
     }
 }
