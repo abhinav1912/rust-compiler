@@ -66,6 +66,13 @@ byte_enum!(
     ]
 );
 
+impl OpCode {
+    pub fn u16(i: u16) -> Vec<u8> {
+        let bytes = i.to_be_bytes();
+        vec![bytes[0], bytes[1]]
+    }
+}
+
 pub struct Definition {
     pub name: String,
     pub widths: Vec<usize>

@@ -1,15 +1,15 @@
 use std::{cell::RefCell, rc::Rc, fmt};
 
-use crate::{ast::{Program, Infix, Statement, Expression}, code::Instructions, object::Object};
+use crate::{ast::{Program, Infix, Statement, Expression}, code::{Instructions, Constant, OpCode}, object::Object};
 
 pub struct Compiler {
-    pub constants: Rc<RefCell<Vec<Object>>>,
-    pub instructions: Rc<RefCell<Vec<Instructions>>>
+    pub constants: Rc<RefCell<Vec<Constant>>>,
+    pub instructions: Rc<RefCell<Instructions>>
 }
 
 pub struct ByteCode {
-    pub constants: Rc<RefCell<Vec<Object>>>,
-    pub instructions: Rc<RefCell<Vec<Instructions>>>
+    pub constants: Vec<Constant>,
+    pub instructions: Instructions
 }
 
 impl Compiler {
@@ -35,11 +35,36 @@ impl Compiler {
     }
 
     pub fn compile_expression(&mut self, expression: &Expression) -> Result<(), CompileError> {
-        Err(CompileError::CompilingNotImplemented)
+        match expression {
+            Expression::IntegerLiteral(value) => {
+                let constant = Constant::Integer(*value);
+                let const_index = self.add_constant(constant)?;
+                self.emit_with_operands(OpCode::Constant, OpCode::u16(const_index));
+            },
+            _ => return Err(CompileError::CompilingNotImplemented)
+        }
+        Ok(())
     }
 
     pub fn bytecode(self) -> ByteCode {
-        return ByteCode { constants: self.constants, instructions: self.instructions }
+        return ByteCode { constants: self.constants.borrow().clone(), instructions: self.instructions.borrow().clone() }
+    }
+
+    fn add_constant(&mut self, constant: Constant) -> Result<u16, CompileError> {
+        let const_index = self.constants.borrow_mut().len();
+        self.constants.borrow_mut().push(constant);
+        Ok(const_index as u16)
+    }
+
+    fn emit(&mut self, op_code: OpCode) -> usize {
+        self.emit_with_operands(op_code, vec![])
+    }
+
+    fn emit_with_operands(&mut self, op_code: OpCode, operands: Vec<u8>) -> usize {
+        let pos = self.instructions.borrow().len();
+        self.instructions.borrow_mut().push(op_code as u8);
+        self.instructions.borrow_mut().extend(operands);
+        return pos
     }
 }
 
