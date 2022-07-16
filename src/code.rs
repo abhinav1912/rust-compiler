@@ -66,6 +66,10 @@ byte_enum!(
     ]
 );
 
+pub fn read_uint16(instructions: &[u8], start: usize) -> u16 {
+    u16::from_be_bytes([instructions[start], instructions[start+1]])
+}
+
 impl OpCode {
     pub fn u16(i: u16) -> Vec<u8> {
         let bytes = i.to_be_bytes();

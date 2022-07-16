@@ -2,7 +2,7 @@ pub mod environment;
 pub mod builtin;
 
 use std::{fmt, rc::Rc, cell::RefCell, collections::HashMap};
-use crate::ast::{Prefix, Infix, BlockStatement};
+use crate::{ast::{Prefix, Infix, BlockStatement}, code::Constant};
 
 use self::environment::Environment;
 
@@ -75,6 +75,14 @@ impl Object {
             Object::Array(_) => "ARRAY",
             Object::Float(_) => "FLOAT",
             Object::Hash(_) => "HASH",
+        }
+    }
+
+    pub fn from_constant(constant: &Constant) -> Object {
+        match constant {
+            Constant::Integer(value) => Object::Integer(*value),
+            Constant::Float(value) => Object::Float(*value),
+            Constant::String(value) => Object::String(value.clone()),
         }
     }
 }
