@@ -61,6 +61,14 @@ impl Parser {
         parser
     }
 
+    pub fn input(&self) -> &str {
+        self.lexer.input()
+    }
+
+    pub fn errors(&self) -> &[ParserError] {
+        &self.errors
+    }
+
     pub fn next_token(&mut self) {
         self.curr_token = mem::replace(&mut self.peek_token, self.lexer.next_token());
     }
