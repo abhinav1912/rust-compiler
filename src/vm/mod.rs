@@ -1,6 +1,6 @@
 use std::{rc::Rc, fmt};
 
-use crate::{object::{Object, EvalError}, code::{Instructions, Constant, OpCode, self}, compiler::{ByteCode, CompileError}};
+use crate::{object::{Object, EvalError}, code::{Instructions, Constant, OpCode, self}, compiler::{ByteCode, CompileError}, ast::Infix};
 
 pub const STACK_SIZE: usize = 2048;
 pub const NULL: Object = Object::Null;
@@ -73,7 +73,8 @@ impl Vm {
                 },
                 Some(OpCode::Pop) => {
                     self.pop()?;
-                }, 
+                },
+                Some(OpCode::Add) => self.execute_binary_operation(OpCode::Add)?,
                 _ => return Err(VmError::UnknownOpCode(self.instructions[pointer]))
             }
             pointer += 1;
@@ -97,6 +98,58 @@ impl Vm {
         let popped = self.stack.get(self.pointer - 1);
         self.pointer -= 1;
         popped.map(|o| Rc::clone(o)).ok_or(VmError::StackEmpty)
+    }
+
+    fn execute_binary_operation(&mut self, op_code: OpCode) -> Result<(), VmError> {
+        let right = self.pop()?;
+        let left = self.pop()?;
+        match (&*left, &*right) {
+            (Object::Integer(l), Object::Integer(r)) => {
+                self.execute_integer_binary_operation(op_code, *l, *r)
+            }
+            (l, r) => {
+                let infix = infix_from_op_code(op_code).expect("not binary operation");
+                Err(VmError::Eval(EvalError::TypeMismatch(
+                    infix,
+                    l.clone(),
+                    r.clone(),
+                )))
+            }
+        }
+    }
+
+    fn execute_integer_binary_operation(
+        &mut self,
+        op_code: OpCode,
+        left: i64,
+        right: i64,
+    ) -> Result<(), VmError> {
+        let result = match op_code {
+            OpCode::Add => left + right,
+            OpCode::Sub => left - right,
+            OpCode::Mul => left * right,
+            OpCode::Div => left / right,
+            _ => {
+                // This happens only when this vm is wrong.
+                panic!("not integer binary operation: {:?}", op_code);
+            }
+        };
+
+        self.push(Rc::new(Object::Integer(result)))
+    }
+
+}
+
+fn infix_from_op_code(op_code: OpCode) -> Option<Infix> {
+    match op_code {
+        OpCode::Add => Some(Infix::Plus),
+        OpCode::Sub => Some(Infix::Minus),
+        OpCode::Mul => Some(Infix::Asterisk),
+        OpCode::Div => Some(Infix::Slash),
+        OpCode::Equal => Some(Infix::Eq),
+        OpCode::NotEqual => Some(Infix::NotEq),
+        OpCode::GreaterThan => Some(Infix::Gt),
+        _ => None,
     }
 }
 

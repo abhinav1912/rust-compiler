@@ -146,6 +146,10 @@ fn lookup_definition(byte: u8) -> Option<Definition> {
             name: "OpConstant".to_string(),
             widths: vec![2]
         },
+        OpCode::Add => Definition {
+            name: "OpAdd".to_string(),
+            widths: vec![0]
+        },
         _ => Definition {
             name: "Not implemented".to_string(),
             widths: vec![0]
