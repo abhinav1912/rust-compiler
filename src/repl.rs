@@ -1,9 +1,9 @@
-use crate::{lexer::Lexer, parser::{Parser, ParserError}, evaluator, object::environment::Environment};
+use crate::{lexer::Lexer, parser::{Parser, ParserError}, evaluator, object::environment::Environment, mode::Mode};
 use std::{io::{self, Write}, rc::Rc, cell::RefCell};
 
 const PROMPT: &str = ">> ";
 
-pub fn start() {
+pub fn start(mode: Mode) {
     let env = Rc::new(RefCell::new(Environment::new()));
     loop {
         let input = get_input();
