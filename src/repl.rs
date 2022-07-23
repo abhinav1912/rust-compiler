@@ -1,4 +1,4 @@
-use crate::{lexer::Lexer, parser::{Parser, ParserError}, evaluator, object::environment::Environment, mode::Mode};
+use crate::{lexer::Lexer, parser::{Parser, ParserError}, evaluator, object::environment::Environment, mode::Mode, compiler::Compiler, vm::Vm};
 use std::{io::{self, Write}, rc::Rc, cell::RefCell};
 
 const PROMPT: &str = ">> ";
@@ -14,10 +14,26 @@ pub fn start(mode: Mode) {
             print_parser_errors(parser.errors);
             continue;
         }
-        let evaluation = evaluator::eval(&program, Rc::clone(&env));
-        match evaluation {
-            Ok(obj) => println!("{}", obj),
-            Err(err) => println!("{}", err)
+        match mode {
+            Mode::Eval => match evaluator::eval(&program, Rc::clone(&env)) {
+                Ok(obj) => println!("{}", obj),
+                Err(err) => println!("{}", err)
+            },
+            Mode::Compile => {
+                let compiler = Compiler::new();
+                let bytecode = match compiler.compile(&program) {
+                    Ok(bytecode) => bytecode,
+                    Err(err) => {
+                        println!("Compilation failed: {}", err);
+                        continue;
+                    }
+                };
+                let vm = Vm::new(bytecode);
+                match vm.run() {
+                    Ok(result) => println!("{}", result),
+                    Err(err) => println!("{}", err)
+                }
+            }
         }
     }
 }

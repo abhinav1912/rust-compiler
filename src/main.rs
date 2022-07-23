@@ -8,6 +8,7 @@ fn main() {
 }
 
 fn has_flag(flag: &str) -> bool {
+    println!("{:?}", env::args());
     env::args().any(|arg| arg == flag)
 }
 
