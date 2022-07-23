@@ -124,7 +124,6 @@ byte_enum!(
 );
 
 pub fn read_uint16(instructions: &[u8], start: usize) -> u16 {
-    println!("ccc {:?}, {}", instructions, start);
     u16::from_be_bytes([instructions[start], instructions[start+1]])
 }
 

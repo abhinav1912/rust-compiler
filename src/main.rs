@@ -13,7 +13,8 @@ fn has_flag(flag: &str) -> bool {
 }
 
 fn eval_or_compile() -> Mode {
-    if has_flag("--compile") {
+    // Mode::Compile
+    if has_flag("compile") {
         Mode::Compile
     } else {
         Mode::Eval

@@ -56,14 +56,11 @@ impl Vm {
         let mut pointer = 0;
         while pointer < self.instructions.len() {
             let op = OpCode::from_byte(self.instructions[pointer]);
-            println!("fk {:?}, {}", self.instructions, pointer);
             match op {
                 Some(OpCode::Constant) => {
                     let const_index = code::read_uint16(&self.instructions, pointer+1) as usize;
                     pointer += 2;
-
                     let len = self.constants.len();
-                    println!("rrr {}, {}", const_index, len);
                     if const_index < len {
                         let constant = Object::from_constant(&self.constants[const_index]);
                         self.push(Rc::new(constant))?;
