@@ -72,6 +72,9 @@ impl Vm {
                     self.pop()?;
                 },
                 Some(OpCode::Add) => self.execute_binary_operation(OpCode::Add)?,
+                Some(OpCode::Sub) => self.execute_binary_operation(OpCode::Sub)?,
+                Some(OpCode::Mul) => self.execute_binary_operation(OpCode::Mul)?,
+                Some(OpCode::Div) => self.execute_binary_operation(OpCode::Div)?,
                 _ => return Err(VmError::UnknownOpCode(self.instructions[pointer]))
             }
             pointer += 1;
