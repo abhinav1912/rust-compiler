@@ -75,6 +75,11 @@ impl Vm {
                 Some(OpCode::Sub) => self.execute_binary_operation(OpCode::Sub)?,
                 Some(OpCode::Mul) => self.execute_binary_operation(OpCode::Mul)?,
                 Some(OpCode::Div) => self.execute_binary_operation(OpCode::Div)?,
+                Some(OpCode::True) => self.push(Rc::new(Object::Boolean(true)))?,
+                Some(OpCode::False) => self.push(Rc::new(Object::Boolean(false)))?,
+                Some(OpCode::Equal) => self.execute_comparison(OpCode::Equal)?,
+                Some(OpCode::NotEqual) => self.execute_comparison(OpCode::NotEqual)?,
+                Some(OpCode::GreaterThan) => self.execute_comparison(OpCode::GreaterThan)?,
                 _ => return Err(VmError::UnknownOpCode(self.instructions[pointer]))
             }
             pointer += 1;
@@ -136,6 +141,47 @@ impl Vm {
         };
 
         self.push(Rc::new(Object::Integer(result)))
+    }
+
+    fn execute_comparison(&mut self, op_code: OpCode) -> Result<(), VmError> {
+        let right = self.pop()?;
+        let left = self.pop()?;
+
+        match (&*left, &*right) {
+            (Object::Integer(l), Object::Integer(r)) => {
+                match op_code {
+                    OpCode::Equal => self.push(Rc::new(Object::Boolean(l == r))),
+                    OpCode::NotEqual => self.push(Rc::new(Object::Boolean(l != r))),
+                    OpCode::GreaterThan => self.push(Rc::new(Object::Boolean(l > r))),
+                    _ => {
+                        panic!("unknown operator: {:?}", op_code);
+                    }
+                }
+            },
+            (Object::Boolean(l), Object::Boolean(r)) => {
+                match op_code {
+                    OpCode::Equal => self.push(Rc::new(Object::Boolean(l == r))),
+                    OpCode::NotEqual => self.push(Rc::new(Object::Boolean(l != r))),
+                    OpCode::GreaterThan => Err(VmError::Eval(EvalError::UnknownInfixOperator(
+                        Infix::Gt,
+                        Object::Boolean(*l),
+                        Object::Boolean(*r),
+                    ))),
+                    _ => {
+                        // This happens only when this vm is wrong.
+                        panic!("unknown operator: {:?}", op_code);
+                    }
+                }
+            }
+            (l, r) => {
+                let infix = infix_from_op_code(op_code).expect("not comparison");
+                Err(VmError::Eval(EvalError::TypeMismatch(
+                    infix,
+                    l.clone(),
+                    r.clone(),
+                )))
+            }
+        }
     }
 
 }
