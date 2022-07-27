@@ -82,6 +82,10 @@ impl Compiler {
                 let const_index = self.add_constant(constant)?;
                 self.emit_with_operands(OpCode::Constant, OpCode::u16(const_index));
             },
+            Expression::Boolean(value) => {
+                let op_code = if *value {OpCode::True} else {OpCode::False};
+                self.emit(op_code);
+            }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
         Ok(())
