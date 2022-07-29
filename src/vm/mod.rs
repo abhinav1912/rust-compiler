@@ -1,6 +1,6 @@
 use std::{rc::Rc, fmt};
 
-use crate::{object::{Object, EvalError}, code::{Instructions, Constant, OpCode, self}, compiler::{ByteCode, CompileError}, ast::Infix};
+use crate::{object::{Object, EvalError}, code::{Instructions, Constant, OpCode, self}, compiler::{ByteCode, CompileError}, ast::{Infix, Prefix}};
 
 pub const STACK_SIZE: usize = 2048;
 pub const NULL: Object = Object::Null;
@@ -80,6 +80,27 @@ impl Vm {
                 Some(OpCode::Equal) => self.execute_comparison(OpCode::Equal)?,
                 Some(OpCode::NotEqual) => self.execute_comparison(OpCode::NotEqual)?,
                 Some(OpCode::GreaterThan) => self.execute_comparison(OpCode::GreaterThan)?,
+                Some(OpCode::Bang) => {
+                    let right = self.pop()?;
+                    self.push(Rc::new(Object::Boolean(!right.is_truthy())))?;
+                },
+                Some(OpCode::Minus) => {
+                    let right = self.pop()?;
+                    match &*right {
+                        Object::Integer(value) => {
+                            self.push(Rc::new(Object::Integer(-value)))?;
+                        },
+                        Object::Float(value) => {
+                            self.push(Rc::new(Object::Float(-value)))?;
+                        },
+                        obj => {
+                            return Err(VmError::Eval(EvalError::UnknownPrefixOperator(
+                                Prefix::Minus,
+                                obj.clone(),
+                            )));
+                        }
+                    }
+                }
                 _ => return Err(VmError::UnknownOpCode(self.instructions[pointer]))
             }
             pointer += 1;

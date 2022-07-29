@@ -90,10 +90,10 @@ impl Compiler {
                 self.compile_expression(expression)?;
                 match prefix {
                     crate::ast::Prefix::Bang => {
-                        self.emit(OpCode::Bang)?;
+                        self.emit(OpCode::Bang);
                     },
                     crate::ast::Prefix::Minus => {
-                        self.emit(OpCode::Minus)?;
+                        self.emit(OpCode::Minus);
                     },
                 }
             }
