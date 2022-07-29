@@ -132,6 +132,15 @@ impl Vm {
         match (&*left, &*right) {
             (Object::Integer(l), Object::Integer(r)) => {
                 self.execute_integer_binary_operation(op_code, *l, *r)
+            },
+            (Object::Integer(l), Object::Float(r)) => {
+                self.execute_float_binary_operation(op_code, *l as f64, *r)
+            },
+            (Object::Float(l), Object::Integer(r)) => {
+                self.execute_float_binary_operation(op_code, *l, *r as f64)
+            },
+            (Object::Float(l), Object::Float(r)) => {
+                self.execute_float_binary_operation(op_code, *l as f64, *r)
             }
             (l, r) => {
                 let infix = infix_from_op_code(op_code).expect("not binary operation");
@@ -162,6 +171,25 @@ impl Vm {
         };
 
         self.push(Rc::new(Object::Integer(result)))
+    }
+
+    fn execute_float_binary_operation(
+        &mut self,
+        op_code: OpCode,
+        left: f64,
+        right: f64
+    ) -> Result<(), VmError> {
+        let result = match op_code {
+            OpCode::Add => left + right,
+            OpCode::Sub => left - right,
+            OpCode::Mul => left * right,
+            OpCode::Div => left / right,
+            _ => {
+                // This happens only when this vm is wrong.
+                panic!("not integer binary operation: {:?}", op_code);
+            }
+        };
+        self.push(Rc::new(Object::Float(result)))
     }
 
     fn execute_comparison(&mut self, op_code: OpCode) -> Result<(), VmError> {
