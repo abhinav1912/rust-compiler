@@ -12,6 +12,7 @@ pub enum ParserError {
     ExpectedPrefixToken(Token),
     ExpectedInfixToken(Token),
     ExpectedIntegerToken(Token),
+    ExpectedFloatToken(Token),
     ExpectedLParenToken(Token),
     ExpectedRParenToken(Token),
     ExpectedLBraceToken(Token),
@@ -23,6 +24,7 @@ pub enum ParserError {
     ExpectedComma(Token),
     ExpectedColon(Token),
     ParseInt(String),
+    ParseFloat(String),
     ParsingNotImplemented
 }
 
@@ -154,6 +156,7 @@ impl Parser {
         match self.curr_token {
             Token::Ident(_) => Some(Parser::parse_identifier),
             Token::Int(_) => Some(Parser::parse_integer),
+            Token::Float(_) => Some(Parser::parse_float),
             Token::Bang | Token::Minus => Some(Parser::parse_prefix_expression),
             Token::True | Token::False => Some(Parser::parse_boolean),
             Token::Lparen => Some(Parser::parse_grouped_expression),
@@ -190,6 +193,17 @@ impl Parser {
             }
         } else {
             Err(ParserError::ExpectedIntegerToken(self.peek_token.clone()))
+        }
+    }
+
+    fn parse_float(&mut self) -> Result<Expression> {
+        if let Token::Float(float) = &self.curr_token {
+            match float.parse() {
+                Ok(value) => Ok(Expression::FloatLiteral(value)),
+                Err(_) => Err(ParserError::ParseFloat(float.to_string()))
+            }
+        } else {
+            Err(ParserError::ExpectedFloatToken(self.peek_token.clone()))
         }
     }
 
