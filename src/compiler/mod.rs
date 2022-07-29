@@ -85,6 +85,17 @@ impl Compiler {
             Expression::Boolean(value) => {
                 let op_code = if *value {OpCode::True} else {OpCode::False};
                 self.emit(op_code);
+            },
+            Expression::Prefix(prefix, expression) => {
+                self.compile_expression(expression)?;
+                match prefix {
+                    crate::ast::Prefix::Bang => {
+                        self.emit(OpCode::Bang)?;
+                    },
+                    crate::ast::Prefix::Minus => {
+                        self.emit(OpCode::Minus)?;
+                    },
+                }
             }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
