@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc, fmt};
+use std::{cell::RefCell, rc::Rc, fmt, mem};
 
 use crate::{ast::{Program, Infix, Statement, Expression, BlockStatement}, code::{Instructions, Constant, OpCode, self}, object::Object};
 
@@ -6,7 +6,8 @@ const TENTATIVE_JUMP_POS: u16 = 9999;
 
 pub struct Compiler {
     pub constants: Rc<RefCell<Vec<Constant>>>,
-    pub instructions: Rc<RefCell<Instructions>>
+    scopes: Vec<CompilationScope>,
+    scope_index: usize
 }
 
 pub struct ByteCode {
@@ -28,9 +29,11 @@ pub struct CompilationScope {
 
 impl Compiler {
     pub fn new() -> Self {
+        let main_scope = CompilationScope::new();
         return Compiler {
             constants: Rc::new(RefCell::new(vec![])),
-            instructions: Rc::new(RefCell::new(vec![]))
+            scopes: vec![main_scope],
+            scope_index: 0
         }
     }
 
@@ -152,7 +155,7 @@ impl Compiler {
     }
 
     pub fn bytecode(self) -> ByteCode {
-        return ByteCode { constants: self.constants.borrow().clone(), instructions: self.instructions.borrow().clone() }
+        return ByteCode { constants: self.constants.borrow().clone(), instructions: self.current_instructions().clone() }
     }
 
     fn add_constant(&mut self, constant: Constant) -> Result<u16, CompileError> {
@@ -166,10 +169,7 @@ impl Compiler {
     }
 
     fn emit_with_operands(&mut self, op_code: OpCode, operands: Vec<u8>) -> usize {
-        let pos = self.instructions.borrow().len();
-        self.instructions.borrow_mut().push(op_code as u8);
-        self.instructions.borrow_mut().extend(operands);
-        return pos
+        self.scopes[self.scope_index].emit_with_operands(op_code, operands)
     }
 
     fn compile_block_statement(&mut self, block: &BlockStatement) -> Result<(), CompileError> {
@@ -192,7 +192,7 @@ impl Compiler {
     }
 
     fn current_instructions(&self) -> &Instructions {
-        &self.instructions.borrow()
+        &self.scopes[self.scope_index].instructions
     }
 }
 
@@ -303,5 +303,40 @@ mod tests {
                 errors
             );
         }
+    }
+}
+
+impl CompilationScope {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn emit_with_operands(&mut self, op_code: OpCode, operands: Vec<u8>) -> usize {
+        let pos = self.instructions.len();
+        self.instructions.push(op_code as u8);
+        self.instructions.extend(operands);
+        self.set_last_instruction(op_code, pos);
+        return pos
+    }
+
+    pub fn last_instruction_is(&self, op_code: OpCode) -> bool {
+        match self.last_instruction {
+            Some(emitted) => emitted.op_code == op_code,
+            None => false,
+        }
+    }
+
+    pub fn remove_last_pop(&mut self) {
+        if let Some(emitted) = self.last_instruction {
+            self.instructions.truncate(emitted.position);
+            self.last_instruction = mem::replace(&mut self.previous_instruction, None);
+        }
+    }
+
+    fn set_last_instruction(&mut self, op_code: OpCode, position: usize) {
+        self.previous_instruction = mem::replace(
+            &mut self.last_instruction,
+            Some(EmittedInstruction{op_code, position})
+        )
     }
 }
