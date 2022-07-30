@@ -1,6 +1,8 @@
 use std::{cell::RefCell, rc::Rc, fmt};
 
-use crate::{ast::{Program, Infix, Statement, Expression}, code::{Instructions, Constant, OpCode}, object::Object};
+use crate::{ast::{Program, Infix, Statement, Expression, BlockStatement}, code::{Instructions, Constant, OpCode, self}, object::Object};
+
+const TENTATIVE_JUMP_POS: u16 = 9999;
 
 pub struct Compiler {
     pub constants: Rc<RefCell<Vec<Constant>>>,
@@ -101,6 +103,36 @@ impl Compiler {
                         self.emit(OpCode::Minus);
                     },
                 }
+            },
+            Expression::If(condition, consequence, alternative) => {
+                self.compile_expression(condition)?;
+                let jump_not_truthy_pos = self.emit_with_operands(OpCode::JumpIfNotTruthy, OpCode::u16(TENTATIVE_JUMP_POS));
+                self.compile_block_statement(consequence)?;
+                if self.last_instruction_is(OpCode::Pop) {
+                    self.remove_last_pop();
+                }
+                
+                let jump_pos = self.emit_with_operands(OpCode::Jump, OpCode::u16(TENTATIVE_JUMP_POS));
+                self.replace_instruction(
+                    jump_not_truthy_pos,
+                    code::make_u16(OpCode::JumpIfNotTruthy, self.current_instructions().len() as u16)
+                );
+
+                match alternative {
+                    Some(alt) => {
+                        self.compile_block_statement(alt)?;
+                        if self.last_instruction_is(OpCode::Pop) {
+                            self.remove_last_pop();
+                        }
+                    }
+                    None => {
+                        self.emit(OpCode::Null);
+                    }
+                }
+                self.replace_instruction(
+                    jump_pos,
+                    code::make_u16(OpCode::Jump, self.current_instructions().len() as u16)
+                );
             }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
@@ -126,6 +158,29 @@ impl Compiler {
         self.instructions.borrow_mut().push(op_code as u8);
         self.instructions.borrow_mut().extend(operands);
         return pos
+    }
+
+    fn compile_block_statement(&mut self, block: &BlockStatement) -> Result<(), CompileError> {
+        for statement in &block.statements {
+            self.compile_statement(statement)?;
+        }
+        Ok(())
+    }
+
+    fn last_instruction_is(&self, op_code: OpCode) -> bool {
+
+    }
+
+    fn remove_last_pop(&mut self) {
+
+    }
+
+    fn replace_instruction(&mut self, pos: usize, instruction: Instructions) {
+
+    }
+
+    fn current_instructions(&self) -> &Instructions {
+        &self.instructions.borrow()
     }
 }
 
