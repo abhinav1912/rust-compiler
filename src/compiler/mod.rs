@@ -14,6 +14,18 @@ pub struct ByteCode {
     pub instructions: Instructions
 }
 
+pub struct EmittedInstruction {
+    pub op_code: OpCode,
+    pub position: usize,
+}
+
+#[derive(Default)]
+pub struct CompilationScope {
+    pub instructions: Instructions,
+    last_instruction: Option<EmittedInstruction>,
+    previous_instruction: Option<EmittedInstruction>
+}
+
 impl Compiler {
     pub fn new() -> Self {
         return Compiler {
