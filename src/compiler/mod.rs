@@ -180,15 +180,15 @@ impl Compiler {
     }
 
     fn last_instruction_is(&self, op_code: OpCode) -> bool {
-
+        self.scopes[self.scope_index].last_instruction_is(op_code)
     }
 
     fn remove_last_pop(&mut self) {
-
+        self.scopes[self.scope_index].remove_last_pop()
     }
 
     fn replace_instruction(&mut self, pos: usize, instruction: Instructions) {
-
+        self.scopes[self.scope_index].replace_instruction(pos, instruction)
     }
 
     fn current_instructions(&self) -> &Instructions {
@@ -320,14 +320,25 @@ impl CompilationScope {
     }
 
     pub fn last_instruction_is(&self, op_code: OpCode) -> bool {
-        match self.last_instruction {
+        match &self.last_instruction {
             Some(emitted) => emitted.op_code == op_code,
             None => false,
         }
     }
 
+    pub fn replace_instruction(&mut self, pos: usize, new_instruction: Instructions) {
+        for (i, byte) in new_instruction.iter().enumerate() {
+            let offset = pos + i;
+            if offset < self.instructions.len() {
+                self.instructions[offset] = *byte;
+            } else {
+                self.instructions.push(*byte);
+            }
+        }
+    }
+
     pub fn remove_last_pop(&mut self) {
-        if let Some(emitted) = self.last_instruction {
+        if let Some(emitted) = &self.last_instruction {
             self.instructions.truncate(emitted.position);
             self.last_instruction = mem::replace(&mut self.previous_instruction, None);
         }
