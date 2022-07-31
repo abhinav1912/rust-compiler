@@ -10,7 +10,8 @@ pub struct Vm {
     pub constants: Vec<Constant>,
     instructions: Instructions,
     stack: Vec<Rc<Object>>,
-    pointer: usize
+    stack_pointer: usize,
+    ins_pointer: usize
 }
 
 #[derive(Debug)]
@@ -48,18 +49,18 @@ impl Vm {
             constants: bytecode.constants,
             instructions: bytecode.instructions,
             stack,
-            pointer: 0
+            stack_pointer: 0,
+            ins_pointer: 0
         }
     }
 
     pub fn run(mut self) -> Result<Rc<Object>, VmError> {
-        let mut pointer = 0;
-        while pointer < self.instructions.len() {
-            let op = OpCode::from_byte(self.instructions[pointer]);
+        while self.ins_pointer < self.instructions.len() {
+            let op = OpCode::from_byte(self.instructions[self.ins_pointer]);
             match op {
                 Some(OpCode::Constant) => {
-                    let const_index = code::read_uint16(&self.instructions, pointer+1) as usize;
-                    pointer += 2;
+                    let const_index = code::read_uint16(&self.instructions, self.ins_pointer+1) as usize;
+                    self.increment_pointer(2);
                     let len = self.constants.len();
                     if const_index < len {
                         let constant = Object::from_constant(&self.constants[const_index]);
@@ -100,29 +101,45 @@ impl Vm {
                             )));
                         }
                     }
+                },
+                Some(OpCode::Jump) => {
+                    let pos = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    self.set_pointer(pos-1);
+                },
+                Some(OpCode::JumpIfNotTruthy) => {
+                    let pos = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    self.increment_pointer(2);
+
+                    let condition = self.pop()?;
+                    if !condition.is_truthy() {
+                        self.set_pointer(pos-1);
+                    }
+                },
+                Some(OpCode::Null) => {
+                    self.push(Rc::new(NULL))?;
                 }
-                _ => return Err(VmError::UnknownOpCode(self.instructions[pointer]))
+                _ => return Err(VmError::UnknownOpCode(self.instructions[self.ins_pointer]))
             }
-            pointer += 1;
+            self.increment_pointer(1);
         }
         self.stack
-            .get(self.pointer)
+            .get(self.stack_pointer)
             .map(|o| Rc::clone(o))
             .ok_or(VmError::StackEmpty)
     }
 
     fn push(&mut self, obj: Rc<Object>) -> Result<(), VmError> {
-        if self.pointer >= STACK_SIZE {
+        if self.stack_pointer >= STACK_SIZE {
             return Err(VmError::StackOverflow);
         }
-        self.stack[self.pointer] = obj;
-        self.pointer += 1;
+        self.stack[self.stack_pointer] = obj;
+        self.stack_pointer += 1;
         Ok(())
     }
 
     fn pop(&mut self) -> Result<Rc<Object>, VmError> {
-        let popped = self.stack.get(self.pointer - 1);
-        self.pointer -= 1;
+        let popped = self.stack.get(self.stack_pointer - 1);
+        self.stack_pointer -= 1;
         popped.map(|o| Rc::clone(o)).ok_or(VmError::StackEmpty)
     }
 
@@ -233,6 +250,13 @@ impl Vm {
         }
     }
 
+    fn set_pointer(&mut self, pos: usize) {
+        self.ins_pointer = pos;
+    }
+
+    fn increment_pointer(&mut self, increment: usize) {
+        self.ins_pointer += increment;
+    }
 }
 
 fn infix_from_op_code(op_code: OpCode) -> Option<Infix> {

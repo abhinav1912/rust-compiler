@@ -10,6 +10,7 @@ pub struct Compiler {
     scope_index: usize
 }
 
+#[derive(Debug)]
 pub struct ByteCode {
     pub constants: Vec<Constant>,
     pub instructions: Instructions
@@ -160,6 +161,9 @@ impl Compiler {
 
     fn add_constant(&mut self, constant: Constant) -> Result<u16, CompileError> {
         let const_index = self.constants.borrow_mut().len();
+        if const_index >= 0xffff {
+            return Err(CompileError::TooManyConstants);
+        }
         self.constants.borrow_mut().push(constant);
         Ok(const_index as u16)
     }
