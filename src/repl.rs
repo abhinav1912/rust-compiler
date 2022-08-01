@@ -1,10 +1,12 @@
-use crate::{lexer::Lexer, parser::{Parser, ParserError}, evaluator, object::environment::Environment, mode::Mode, compiler::Compiler, vm::Vm};
+use crate::{lexer::Lexer, parser::{Parser, ParserError}, evaluator, object::environment::Environment, mode::Mode, compiler::{Compiler, symbol_table::SymbolTable}, vm::{Vm, self}};
 use std::{io::{self, Write}, rc::Rc, cell::RefCell};
 
 const PROMPT: &str = ">> ";
 
 pub fn start(mode: Mode) {
     let env = Rc::new(RefCell::new(Environment::new()));
+    let constants = Rc::new(RefCell::new(Vec::new()));
+    let symbol_table = Rc::new(RefCell::new(SymbolTable::new()));
     loop {
         let input = get_input();
         let lexer = Lexer::new(input);
@@ -20,7 +22,7 @@ pub fn start(mode: Mode) {
                 Err(err) => println!("{}", err)
             },
             Mode::Compile => {
-                let compiler = Compiler::new();
+                let compiler = Compiler::new_with_state(Rc::clone(&symbol_table), Rc::clone(&constants));
                 let bytecode = match compiler.compile(&program) {
                     Ok(bytecode) => bytecode,
                     Err(err) => {

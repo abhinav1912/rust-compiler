@@ -4,12 +4,15 @@ use std::{cell::RefCell, rc::Rc, fmt, mem};
 
 use crate::{ast::{Program, Infix, Statement, Expression, BlockStatement}, code::{Instructions, Constant, OpCode, self}, object::Object};
 
+use self::symbol_table::SymbolTable;
+
 const TENTATIVE_JUMP_POS: u16 = 9999;
 
 pub struct Compiler {
     pub constants: Rc<RefCell<Vec<Constant>>>,
     scopes: Vec<CompilationScope>,
-    scope_index: usize
+    scope_index: usize,
+    symbol_table: Rc<RefCell<SymbolTable>>
 }
 
 #[derive(Debug)]
@@ -33,10 +36,22 @@ pub struct CompilationScope {
 impl Compiler {
     pub fn new() -> Self {
         let main_scope = CompilationScope::new();
+        let symbol_table = Rc::new(RefCell::new(SymbolTable::new()));
         return Compiler {
             constants: Rc::new(RefCell::new(vec![])),
             scopes: vec![main_scope],
-            scope_index: 0
+            scope_index: 0,
+            symbol_table
+        }
+    }
+
+    pub fn new_with_state(symbol_table: Rc<RefCell<SymbolTable>>, constants: Rc<RefCell<Vec<Constant>>>) -> Self {
+        let main_scope = CompilationScope::new();
+        Compiler {
+            constants,
+            symbol_table,
+            scopes: vec![main_scope],
+            scope_index: 0,
         }
     }
 
