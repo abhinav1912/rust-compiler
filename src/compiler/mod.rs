@@ -1,3 +1,5 @@
+pub mod symbol_table;
+
 use std::{cell::RefCell, rc::Rc, fmt, mem};
 
 use crate::{ast::{Program, Infix, Statement, Expression, BlockStatement}, code::{Instructions, Constant, OpCode, self}, object::Object};
