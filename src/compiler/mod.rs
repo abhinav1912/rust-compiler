@@ -4,7 +4,7 @@ use std::{cell::RefCell, rc::Rc, fmt, mem};
 
 use crate::{ast::{Program, Infix, Statement, Expression, BlockStatement}, code::{Instructions, Constant, OpCode, self}, object::Object};
 
-use self::symbol_table::SymbolTable;
+use self::symbol_table::{SymbolTable, SymbolScope};
 
 const TENTATIVE_JUMP_POS: u16 = 9999;
 
@@ -68,6 +68,18 @@ impl Compiler {
                 self.compile_expression(expression)?;
                 self.emit(OpCode::Pop);
             },
+            Statement::Let(name, exp) => {
+                let symbol = *self.symbol_table.borrow_mut().define(name);
+                self.compile_expression(exp)?;
+
+                match symbol.scope {
+                    SymbolScope::Global => {
+                        self.emit_with_operands(OpCode::SetGlobal, OpCode::u16(symbol.index));
+                    },
+                    SymbolScope::Local => todo!(),
+                }
+
+            }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
         Ok(())

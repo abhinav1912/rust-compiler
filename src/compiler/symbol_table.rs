@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, mem};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum SymbolScope {
@@ -49,5 +49,16 @@ impl SymbolTable {
         };
         self.current.num_definitions += 1;
         self.current.define_symbol(name, symbol)
+    }
+
+    pub fn resolve(&mut self, name: &str) -> Option<Symbol> {
+        let maybe_symbol: &Option<Symbol> = unsafe {
+            mem::transmute(self.current.store.get(name))
+        };
+        if maybe_symbol.is_some() {
+            return maybe_symbol.clone()
+        } else {
+            return None
+        }
     }
 }

@@ -1,8 +1,9 @@
-use std::{rc::Rc, fmt};
+use std::{rc::Rc, fmt, cell::RefCell};
 
 use crate::{object::{Object, EvalError}, code::{Instructions, Constant, OpCode, self}, compiler::{ByteCode, CompileError}, ast::{Infix, Prefix}};
 
 pub const STACK_SIZE: usize = 2048;
+pub const GLOBAL_SIZE: usize = 65536;
 pub const NULL: Object = Object::Null;
 
 #[derive(Debug)]
@@ -10,6 +11,7 @@ pub struct Vm {
     pub constants: Vec<Constant>,
     instructions: Instructions,
     stack: Vec<Rc<Object>>,
+    globals: Rc<RefCell<Vec<Rc<Object>>>>,
     stack_pointer: usize,
     ins_pointer: usize
 }
@@ -22,6 +24,10 @@ pub enum VmError {
     StackEmpty,
     NotFunction(Constant),
     Eval(EvalError),
+}
+
+pub fn new_globals() -> Vec<Rc<Object>> {
+    Vec::with_capacity(GLOBAL_SIZE)
 }
 
 impl fmt::Display for VmError {
@@ -50,7 +56,8 @@ impl Vm {
             instructions: bytecode.instructions,
             stack,
             stack_pointer: 0,
-            ins_pointer: 0
+            ins_pointer: 0,
+            globals: Rc::new(RefCell::new(new_globals())),
         }
     }
 
@@ -117,6 +124,25 @@ impl Vm {
                 },
                 Some(OpCode::Null) => {
                     self.push(Rc::new(NULL))?;
+                },
+                Some(OpCode::SetGlobal) => {
+                    let global_index = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    self.increment_pointer(2);
+
+                    let popped = self.pop()?;
+                    let mut globals = self.globals.borrow_mut();
+                    if global_index == globals.len() {
+                        globals.push(popped);
+                    } else {
+                        globals[global_index] = popped;
+                    }
+                },
+                Some(OpCode::GetGlobal) => {
+                    let global_index = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    self.increment_pointer(2);
+
+                    let global = Rc::clone(&self.globals.borrow()[global_index]);
+                    self.push(global)?;
                 }
                 _ => return Err(VmError::UnknownOpCode(self.instructions[self.ins_pointer]))
             }
