@@ -4,7 +4,7 @@ use std::{cell::RefCell, rc::Rc, fmt, mem};
 
 use crate::{ast::{Program, Infix, Statement, Expression, BlockStatement}, code::{Instructions, Constant, OpCode, self}, object::Object};
 
-use self::symbol_table::{SymbolTable, SymbolScope};
+use self::symbol_table::{SymbolTable, SymbolScope, Symbol};
 
 const TENTATIVE_JUMP_POS: u16 = 9999;
 
@@ -178,6 +178,15 @@ impl Compiler {
                     jump_pos,
                     code::make_u16(OpCode::Jump, self.current_instructions().len() as u16)
                 );
+            },
+            Expression::Identifier(name) => {
+                let symbol = {
+                    match self.symbol_table.borrow_mut().resolve(name) {
+                        Some(symbol) => symbol,
+                        None => return Err(CompileError::UndefinedVariable(name.to_string())),
+                    }
+                };
+                self.load_symbol(symbol);
             }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
@@ -210,6 +219,15 @@ impl Compiler {
             self.compile_statement(statement)?;
         }
         Ok(())
+    }
+
+    fn load_symbol(&mut self, symbol: Symbol) {
+        match symbol.scope {
+            SymbolScope::Global => {
+                self.emit_with_operands(OpCode::GetGlobal, OpCode::u16(symbol.index));
+            },
+            SymbolScope::Local => todo!(),
+        }
     }
 
     fn last_instruction_is(&self, op_code: OpCode) -> bool {

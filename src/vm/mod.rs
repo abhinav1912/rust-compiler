@@ -47,17 +47,26 @@ impl fmt::Display for VmError {
 
 impl Vm {
     pub fn new(bytecode: ByteCode) -> Self {
+        Vm::new_with_globals_store(bytecode, Rc::new(RefCell::new(new_globals())))
+    }
+
+    pub fn new_with_globals_store(
+        bytecode: ByteCode,
+        globals: Rc<RefCell<Vec<Rc<Object>>>>,
+    ) -> Self {
         let mut stack = Vec::with_capacity(STACK_SIZE);
+        // Pre-fill the stack so that we can easily put values with stack pointer.
         for _ in 0..STACK_SIZE {
             stack.push(Rc::new(NULL));
         }
-        return Vm {
+
+        Vm {
             constants: bytecode.constants,
-            instructions: bytecode.instructions,
             stack,
             stack_pointer: 0,
+            globals,
+            instructions: bytecode.instructions,
             ins_pointer: 0,
-            globals: Rc::new(RefCell::new(new_globals())),
         }
     }
 

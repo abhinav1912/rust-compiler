@@ -7,6 +7,7 @@ pub fn start(mode: Mode) {
     let env = Rc::new(RefCell::new(Environment::new()));
     let constants = Rc::new(RefCell::new(Vec::new()));
     let symbol_table = Rc::new(RefCell::new(SymbolTable::new()));
+    let globals = Rc::new(RefCell::new(vm::new_globals()));
     loop {
         let input = get_input();
         let lexer = Lexer::new(input);
@@ -30,7 +31,7 @@ pub fn start(mode: Mode) {
                         continue;
                     }
                 };
-                let vm = Vm::new(bytecode);
+                let vm = Vm::new_with_globals_store(bytecode, Rc::clone(&globals));
                 match vm.run() {
                     Ok(result) => println!("{}", result),
                     Err(err) => println!("{}", err)
