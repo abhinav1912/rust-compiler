@@ -187,6 +187,10 @@ impl Compiler {
                     }
                 };
                 self.load_symbol(symbol);
+            },
+            Expression::StringLiteral(val) => {
+                let const_index = self.add_constant(Constant::String(val.to_string()))?;
+                self.emit_with_operands(OpCode::Constant, OpCode::u16(const_index));
             }
             _ => return Err(CompileError::CompilingNotImplemented)
         }

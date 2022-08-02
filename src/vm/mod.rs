@@ -193,7 +193,10 @@ impl Vm {
             },
             (Object::Float(l), Object::Float(r)) => {
                 self.execute_float_binary_operation(op_code, *l as f64, *r)
-            }
+            },
+            (Object::String(l), Object::String(r)) => {
+                self.execute_binary_string_operation(op_code, l, r)
+            },
             (l, r) => {
                 let infix = infix_from_op_code(op_code).expect("not binary operation");
                 Err(VmError::Eval(EvalError::TypeMismatch(
@@ -242,6 +245,30 @@ impl Vm {
             }
         };
         self.push(Rc::new(Object::Float(result)))
+    }
+
+    fn execute_binary_string_operation(
+        &mut self,
+        op_code: OpCode,
+        left: &str,
+        right: &str
+    ) -> Result<(), VmError> {
+        match op_code {
+            OpCode::Add => {
+                let result = format!("{}{}", left, right);
+                self.push(Rc::new(Object::String(result)))
+            }
+            OpCode::Sub | OpCode::Mul | OpCode::Div => {
+                Err(VmError::Eval(EvalError::UnknownInfixOperator(
+                    infix_from_op_code(op_code).expect("not string binary operation"),
+                    Object::String(left.to_string()),
+                    Object::String(right.to_string()),
+                )))
+            }
+            _ => {
+                panic!("not string binary operation: {:?}", op_code);
+            }
+        }
     }
 
     fn execute_comparison(&mut self, op_code: OpCode) -> Result<(), VmError> {
