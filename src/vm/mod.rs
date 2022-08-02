@@ -152,6 +152,17 @@ impl Vm {
 
                     let global = Rc::clone(&self.globals.borrow()[global_index]);
                     self.push(global)?;
+                },
+                Some(OpCode::Array) => {
+                    let array_size = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    self.increment_pointer(2);
+                    
+                    let mut items = Vec::with_capacity(array_size);
+                    for _ in 0..array_size {
+                        items.push((*self.pop()?).clone());
+                    }
+                    items.reverse();
+                    self.push(Rc::new(Object::Array(items)))?;
                 }
                 _ => return Err(VmError::UnknownOpCode(self.instructions[self.ins_pointer]))
             }

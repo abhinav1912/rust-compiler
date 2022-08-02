@@ -191,6 +191,12 @@ impl Compiler {
             Expression::StringLiteral(val) => {
                 let const_index = self.add_constant(Constant::String(val.to_string()))?;
                 self.emit_with_operands(OpCode::Constant, OpCode::u16(const_index));
+            },
+            Expression::Array(expressions) => {
+                for expression in expressions {
+                    self.compile_expression(expression)?;
+                }
+                self.emit_with_operands(OpCode::Array, OpCode::u16(expressions.len() as u16));
             }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
