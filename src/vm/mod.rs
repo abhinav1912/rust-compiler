@@ -176,6 +176,44 @@ impl Vm {
                         items.insert(key, value);
                     }
                     self.push(Rc::new(Object::Hash(items)))?;
+                },
+                Some(OpCode::Index) => {
+                    let index = self.pop()?;
+                    let object = self.pop()?;
+                    match &*object {
+                        Object::Array(values) => {
+                            if let Object::Integer(i) = &*index {
+                                let item = values.get(*i as usize).unwrap_or(&NULL).clone();
+                                self.push(Rc::new(item))?;
+                            } else {
+                                return Err(VmError::Eval(EvalError::UnknownIndexOperator(
+                                    (*object).clone(),
+                                    (*index).clone(),
+                                )));
+                            }
+                        },
+                        Object::Hash(hash) => {
+                            let key = match &*index {
+                                Object::Integer(i) => HashKey::Integer(*i),
+                                Object::String(s) => HashKey::String(s.clone()),
+                                Object::Boolean(b) => HashKey::Boolean(*b),
+                                _ => {
+                                    return Err(VmError::Eval(EvalError::UnknownIndexOperator(
+                                        (*object).clone(),
+                                        (*index).clone(),
+                                    )));
+                                }
+                            };
+                            let value = hash.get(&key).unwrap_or(&NULL);
+                            self.push(Rc::new(value.clone()))?;
+                        },
+                        _ => {
+                            return Err(VmError::Eval(EvalError::UnknownIndexOperator(
+                                (*object).clone(),
+                                (*index).clone(),
+                            )));
+                        }
+                    }
                 }
                 _ => return Err(VmError::UnknownOpCode(self.instructions[self.ins_pointer]))
             }

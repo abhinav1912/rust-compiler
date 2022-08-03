@@ -205,6 +205,11 @@ impl Compiler {
                 }
                 self.emit_with_operands(OpCode::Hash, OpCode::u16(pairs.len() as u16));
 
+            },
+            Expression::Index(left, index) => {
+                self.compile_expression(left)?;
+                self.compile_expression(index)?;
+                self.emit(OpCode::Index);
             }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
