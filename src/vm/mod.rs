@@ -1,6 +1,6 @@
-use std::{rc::Rc, fmt, cell::RefCell};
+use std::{rc::Rc, fmt, cell::RefCell, collections::HashMap};
 
-use crate::{object::{Object, EvalError}, code::{Instructions, Constant, OpCode, self}, compiler::{ByteCode, CompileError}, ast::{Infix, Prefix}};
+use crate::{object::{Object, EvalError, HashKey}, code::{Instructions, Constant, OpCode, self}, compiler::{ByteCode, CompileError}, ast::{Infix, Prefix}};
 
 pub const STACK_SIZE: usize = 2048;
 pub const GLOBAL_SIZE: usize = 65536;
@@ -163,6 +163,19 @@ impl Vm {
                     }
                     items.reverse();
                     self.push(Rc::new(Object::Array(items)))?;
+                },
+                Some(OpCode::Hash) => {
+                    let hash_size = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    self.increment_pointer(2);
+                    
+                    let mut items = HashMap::with_capacity(hash_size);
+                    for _ in 0..hash_size {
+                        let value = (*self.pop()?).clone();
+                        let key = HashKey::from_object(&*self.pop()?)
+                            .or_else(|e| Err(VmError::Eval(e)))?;
+                        items.insert(key, value);
+                    }
+                    self.push(Rc::new(Object::Hash(items)))?;
                 }
                 _ => return Err(VmError::UnknownOpCode(self.instructions[self.ins_pointer]))
             }

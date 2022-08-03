@@ -197,6 +197,14 @@ impl Compiler {
                     self.compile_expression(expression)?;
                 }
                 self.emit_with_operands(OpCode::Array, OpCode::u16(expressions.len() as u16));
+            },
+            Expression::Hash(pairs) => {
+                for (key, value) in pairs {
+                    self.compile_expression(key)?;
+                    self.compile_expression(value)?;
+                }
+                self.emit_with_operands(OpCode::Hash, OpCode::u16(pairs.len() as u16));
+
             }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
