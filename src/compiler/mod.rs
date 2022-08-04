@@ -268,6 +268,22 @@ impl Compiler {
     fn current_instructions(&self) -> &Instructions {
         &self.scopes[self.scope_index].instructions
     }
+
+    fn enter_scope(&mut self) {
+        let scope = CompilationScope {
+            instructions: vec![],
+            last_instruction: None,
+            previous_instruction: None,
+        };
+        self.scopes.push(scope);
+        self.scope_index += 1;
+    }
+
+    fn leave_scope(&mut self) -> Instructions {
+        let scope = self.scopes.pop().expect("No current scope");
+        self.scope_index -= 1;
+        return scope.instructions;
+    }
 }
 
 #[derive(Debug)]
