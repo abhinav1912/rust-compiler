@@ -160,7 +160,8 @@ fn lookup_definition(byte: u8) -> Option<Definition> {
 pub enum Constant {
     Integer(i64),
     Float(f64),
-    String(String)    
+    String(String),
+    CompiledFunction(CompiledFunction)
 }
 
 impl fmt::Display for Constant {
@@ -168,7 +169,8 @@ impl fmt::Display for Constant {
         match self {
             Constant::Integer(value) => write!(f, "{}", value),
             Constant::Float(value) => write!(f, "{}", value),
-            Constant::String(value) => write!(f, "\"{}\"", value)
+            Constant::String(value) => write!(f, "\"{}\"", value),
+            Constant::CompiledFunction(cf) => write!(f, "{}", cf),
         }
     }
 }
@@ -179,6 +181,26 @@ impl Constant {
             Constant::Integer(_) => "INTEGER",
             Constant::Float(_) => "FLOAT",
             Constant::String(_) => "STRING",
+            Constant::CompiledFunction(_) => "COMPILED_FUNCTION",
         }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CompiledFunction {
+    pub instructions: Instructions,
+    pub num_locals: u8,
+    pub num_parameters: u8
+}
+
+impl fmt::Display for CompiledFunction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "compiled function ({} locals, {} parameters): {}",
+            self.num_locals,
+            self.num_parameters,
+            print_instructions(&self.instructions)
+        )
     }
 }
