@@ -2,7 +2,7 @@ pub mod environment;
 pub mod builtin;
 
 use std::{fmt, rc::Rc, cell::RefCell, collections::HashMap};
-use crate::{ast::{Prefix, Infix, BlockStatement}, code::Constant};
+use crate::{ast::{Prefix, Infix, BlockStatement}, code::{Constant, CompiledFunction}};
 
 use self::environment::Environment;
 
@@ -20,7 +20,8 @@ pub enum Object {
     Array(Vec<Object>),
     Float(f64),
     Hash(HashMap<HashKey, Object>),
-    Null
+    Null,
+    CompiledFunction(CompiledFunction),
 }
 
 #[derive(Debug)]
@@ -75,6 +76,7 @@ impl Object {
             Object::Array(_) => "ARRAY",
             Object::Float(_) => "FLOAT",
             Object::Hash(_) => "HASH",
+            Object::CompiledFunction(_) => "COMPILED_FUNCTION",
         }
     }
 
@@ -83,6 +85,7 @@ impl Object {
             Constant::Integer(value) => Object::Integer(*value),
             Constant::Float(value) => Object::Float(*value),
             Constant::String(value) => Object::String(value.clone()),
+            Constant::CompiledFunction(value) => Object::CompiledFunction(value.clone()),
         }
     }
 }
@@ -114,7 +117,8 @@ impl fmt::Display for Object {
                     .collect::<Vec<String>>();
                 items.sort();
                 write!(f, "{{{}}}", items.join(", "))
-            }
+            },
+            Object::CompiledFunction(cf) => write!(f, "{}", cf),
         }
     }
 }
