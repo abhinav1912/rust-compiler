@@ -2,7 +2,7 @@ pub mod environment;
 pub mod builtin;
 
 use std::{fmt, rc::Rc, cell::RefCell, collections::HashMap};
-use crate::{ast::{Prefix, Infix, BlockStatement}, code::{Constant, CompiledFunction}};
+use crate::{ast::{Prefix, Infix, BlockStatement}, code::{Constant, CompiledFunction, self}};
 
 use self::environment::Environment;
 
@@ -22,6 +22,7 @@ pub enum Object {
     Hash(HashMap<HashKey, Object>),
     Null,
     CompiledFunction(CompiledFunction),
+    Closure(Closure)
 }
 
 #[derive(Debug)]
@@ -77,6 +78,7 @@ impl Object {
             Object::Float(_) => "FLOAT",
             Object::Hash(_) => "HASH",
             Object::CompiledFunction(_) => "COMPILED_FUNCTION",
+            Object::Closure(_) => "CLOSURE",
         }
     }
 
@@ -119,6 +121,21 @@ impl fmt::Display for Object {
                 write!(f, "{{{}}}", items.join(", "))
             },
             Object::CompiledFunction(cf) => write!(f, "{}", cf),
+            Object::Closure(closure) => {
+                let free_list = closure
+                    .free
+                    .iter()
+                    .map(|v| v.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ");
+                write!(
+                    f,
+                    "closure ({}) ({}): {}",
+                    closure.func.num_locals,
+                    free_list,
+                    code::print_instructions(&closure.func.instructions),
+                )
+            }
         }
     }
 }
@@ -195,4 +212,10 @@ pub fn assert_argument_count(expected: usize, arguments: &[Object]) -> Result<()
         })
     }
     Ok(())
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Closure {
+    pub func: CompiledFunction,
+    pub free: Vec<Rc<Object>>,
 }
