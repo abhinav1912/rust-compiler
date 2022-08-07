@@ -1,3 +1,4 @@
+pub mod frame;
 use std::{rc::Rc, fmt, cell::RefCell, collections::HashMap};
 
 use crate::{object::{Object, EvalError, HashKey}, code::{Instructions, Constant, OpCode, self}, compiler::{ByteCode, CompileError}, ast::{Infix, Prefix}};
