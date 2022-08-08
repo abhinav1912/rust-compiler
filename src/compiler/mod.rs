@@ -470,7 +470,7 @@ impl CompilationScope {
     pub fn replace_last_pop_with_return(&mut self) {
         if let Some(last) = &self.last_instruction {
             let position = last.position;
-            self.replace_instruction(position, code::make(OpCode::Return));
+            self.replace_instruction(position, code::make(OpCode::ReturnValue));
             self.last_instruction = Some(EmittedInstruction {
                 position,
                 op_code: OpCode::ReturnValue,
