@@ -132,6 +132,11 @@ impl OpCode {
         let bytes = i.to_be_bytes();
         vec![bytes[0], bytes[1]]
     }
+
+    pub fn u16_u8(first: u16, second: u8) -> Vec<u8> {
+        let bytes = first.to_be_bytes();
+        vec![bytes[0], bytes[1], second]
+    }
 }
 
 pub struct Definition {
@@ -143,16 +148,120 @@ fn lookup_definition(byte: u8) -> Option<Definition> {
     OpCode::from_byte(byte).map(|op_code| match op_code {
         OpCode::Constant => Definition {
             name: "OpConstant".to_string(),
-            widths: vec![2]
+            widths: vec![2],
+        },
+        OpCode::Pop => Definition {
+            name: "OpPop".to_string(),
+            widths: vec![],
         },
         OpCode::Add => Definition {
             name: "OpAdd".to_string(),
-            widths: vec![0]
+            widths: vec![],
         },
-        _ => Definition {
-            name: "Not implemented".to_string(),
-            widths: vec![0]
-        }
+        OpCode::Sub => Definition {
+            name: "OpSub".to_string(),
+            widths: vec![],
+        },
+        OpCode::Mul => Definition {
+            name: "OpMul".to_string(),
+            widths: vec![],
+        },
+        OpCode::Div => Definition {
+            name: "OpDiv".to_string(),
+            widths: vec![],
+        },
+        OpCode::True => Definition {
+            name: "OpTrue".to_string(),
+            widths: vec![],
+        },
+        OpCode::False => Definition {
+            name: "OpFalse".to_string(),
+            widths: vec![],
+        },
+        OpCode::Equal => Definition {
+            name: "OpEqual".to_string(),
+            widths: vec![],
+        },
+        OpCode::NotEqual => Definition {
+            name: "OpNotEqual".to_string(),
+            widths: vec![],
+        },
+        OpCode::GreaterThan => Definition {
+            name: "OpGreaterThan".to_string(),
+            widths: vec![],
+        },
+        OpCode::Minus => Definition {
+            name: "OpMinus".to_string(),
+            widths: vec![],
+        },
+        OpCode::Bang => Definition {
+            name: "OpBang".to_string(),
+            widths: vec![],
+        },
+        OpCode::JumpIfNotTruthy => Definition {
+            name: "OpJumpIfNotTruthy".to_string(),
+            widths: vec![2],
+        },
+        OpCode::Jump => Definition {
+            name: "OpJump".to_string(),
+            widths: vec![2],
+        },
+        OpCode::Null => Definition {
+            name: "OpNull".to_string(),
+            widths: vec![],
+        },
+        OpCode::GetGlobal => Definition {
+            name: "OpGetGlobal".to_string(),
+            widths: vec![2],
+        },
+        OpCode::SetGlobal => Definition {
+            name: "OpSetGlobal".to_string(),
+            widths: vec![2],
+        },
+        OpCode::Array => Definition {
+            name: "OpArray".to_string(),
+            widths: vec![2],
+        },
+        OpCode::Hash => Definition {
+            name: "OpHash".to_string(),
+            widths: vec![2],
+        },
+        OpCode::Index => Definition {
+            name: "OpIndex".to_string(),
+            widths: vec![],
+        },
+        OpCode::Call => Definition {
+            name: "OpCall".to_string(),
+            widths: vec![1],
+        },
+        OpCode::ReturnValue => Definition {
+            name: "OpReturnValue".to_string(),
+            widths: vec![],
+        },
+        OpCode::Return => Definition {
+            name: "OpReturn".to_string(),
+            widths: vec![],
+        },
+        OpCode::GetLocal => Definition {
+            name: "OpGetLocal".to_string(),
+            widths: vec![1],
+        },
+        OpCode::SetLocal => Definition {
+            name: "OpSetLocal".to_string(),
+            widths: vec![1],
+        },
+        OpCode::GetBuiltin => Definition {
+            name: "OpGetBuiltin".to_string(),
+            widths: vec![1],
+        },
+        OpCode::Closure => Definition {
+            name: "OpClosure".to_string(),
+            widths: vec![2, 1],
+        },
+        OpCode::GetFree => Definition {
+            name: "OpGetFree".to_string(),
+            widths: vec![1],
+        },
     })
 }
 
