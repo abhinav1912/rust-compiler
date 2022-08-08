@@ -2,7 +2,7 @@ pub mod symbol_table;
 
 use std::{cell::RefCell, rc::Rc, fmt, mem};
 
-use crate::{ast::{Program, Infix, Statement, Expression, BlockStatement}, code::{Instructions, Constant, OpCode, self}, object::Object};
+use crate::{ast::{Program, Infix, Statement, Expression, BlockStatement}, code::{Instructions, Constant, OpCode, self, CompiledFunction}, object::Object};
 
 use self::symbol_table::{SymbolTable, SymbolScope, Symbol};
 
@@ -79,6 +79,13 @@ impl Compiler {
                     SymbolScope::Local => todo!(),
                 }
 
+            },
+            Statement::Return(None) => {
+                self.emit(OpCode::Return);
+            },
+            Statement::Return(Some(value)) => {
+                self.compile_expression(value)?;
+                self.emit(OpCode::ReturnValue);
             }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
@@ -210,6 +217,35 @@ impl Compiler {
                 self.compile_expression(left)?;
                 self.compile_expression(index)?;
                 self.emit(OpCode::Index);
+            },
+            Expression::FunctionLiteral(params, body) => {
+                let num_params = params.len();
+                if num_params > 0xff {
+                    return Err(CompileError::TooManyParams);
+                }
+                self.enter_scope();
+                self.compile_block_statement(body)?;
+                if self.last_instruction_is(OpCode::Pop) {
+
+                }
+                if !self.last_instruction_is(OpCode::ReturnValue) {
+                    self.emit(OpCode::Return);
+                }
+                let ins = self.leave_scope();
+                let compiled_fn = Constant::CompiledFunction(CompiledFunction {
+                    instructions: ins,
+                    num_locals: 0,
+                    num_parameters: num_params as u8,
+                });
+                let const_index = self.add_constant(compiled_fn)?;
+                self.emit_with_operands(OpCode::Closure, OpCode::u16_u8(const_index, 0));
+            },
+            Expression::Call(func, args) => {
+                self.compile_expression(func)?;
+                for arg in args {
+                    self.compile_expression(arg)?;
+                }
+                self.emit_with_operands(OpCode::Call, vec![args.len() as u8]);
             }
             _ => return Err(CompileError::CompilingNotImplemented)
         }
@@ -263,6 +299,10 @@ impl Compiler {
 
     fn replace_instruction(&mut self, pos: usize, instruction: Instructions) {
         self.scopes[self.scope_index].replace_instruction(pos, instruction)
+    }
+
+    fn replace_last_pop_with_return(&mut self) {
+        self.scopes[self.scope_index].replace_last_pop_with_return()
     }
 
     fn current_instructions(&self) -> &Instructions {
@@ -424,6 +464,17 @@ impl CompilationScope {
             } else {
                 self.instructions.push(*byte);
             }
+        }
+    }
+
+    pub fn replace_last_pop_with_return(&mut self) {
+        if let Some(last) = &self.last_instruction {
+            let position = last.position;
+            self.replace_instruction(position, code::make(OpCode::Return));
+            self.last_instruction = Some(EmittedInstruction {
+                position,
+                op_code: OpCode::ReturnValue,
+            })
         }
     }
 
