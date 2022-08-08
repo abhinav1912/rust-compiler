@@ -1,20 +1,23 @@
 pub mod frame;
 use std::{rc::Rc, fmt, cell::RefCell, collections::HashMap};
 
-use crate::{object::{Object, EvalError, HashKey}, code::{Instructions, Constant, OpCode, self}, compiler::{ByteCode, CompileError}, ast::{Infix, Prefix}};
+use crate::{object::{Object, EvalError, HashKey, Closure}, code::{Instructions, Constant, OpCode, self, CompiledFunction}, compiler::{ByteCode, CompileError}, ast::{Infix, Prefix}};
+
+use self::frame::Frame;
 
 pub const STACK_SIZE: usize = 2048;
 pub const GLOBAL_SIZE: usize = 65536;
+pub const MAX_FRAMES: usize = 1024;
 pub const NULL: Object = Object::Null;
 
 #[derive(Debug)]
 pub struct Vm {
     pub constants: Vec<Constant>,
-    instructions: Instructions,
     stack: Vec<Rc<Object>>,
     globals: Rc<RefCell<Vec<Rc<Object>>>>,
     stack_pointer: usize,
-    ins_pointer: usize
+    frames: Vec<Frame>,
+    frames_index: usize
 }
 
 #[derive(Debug)]
@@ -29,6 +32,22 @@ pub enum VmError {
 
 pub fn new_globals() -> Vec<Rc<Object>> {
     Vec::with_capacity(GLOBAL_SIZE)
+}
+
+fn new_frames(instructions: Instructions) -> Vec<Frame> {
+    let main_function = CompiledFunction {
+        instructions,
+        num_locals: 0,
+        num_parameters: 0,
+    };
+    let main_closure = Closure {
+        func: main_function,
+        free: vec![],
+    };
+    let main_frame = Frame::new(main_closure, 0);
+    let mut frames = Vec::with_capacity(MAX_FRAMES);
+    frames.push(main_frame);
+    frames
 }
 
 impl fmt::Display for VmError {
@@ -66,17 +85,20 @@ impl Vm {
             stack,
             stack_pointer: 0,
             globals,
-            instructions: bytecode.instructions,
-            ins_pointer: 0,
+            frames: new_frames(bytecode.instructions),
+            frames_index: 1,
         }
     }
 
     pub fn run(mut self) -> Result<Rc<Object>, VmError> {
-        while self.ins_pointer < self.instructions.len() {
-            let op = OpCode::from_byte(self.instructions[self.ins_pointer]);
-            match op {
+        while self.current_frame().ip < self.current_frame().instructions().len() {
+            let ip = self.current_frame().ip;
+            let ins = self.current_frame().instructions();
+            let op_code_byte = ins[ip];
+
+            match OpCode::from_byte(op_code_byte) {
                 Some(OpCode::Constant) => {
-                    let const_index = code::read_uint16(&self.instructions, self.ins_pointer+1) as usize;
+                    let const_index = code::read_uint16(ins, ip+1) as usize;
                     self.increment_pointer(2);
                     let len = self.constants.len();
                     if const_index < len {
@@ -120,11 +142,11 @@ impl Vm {
                     }
                 },
                 Some(OpCode::Jump) => {
-                    let pos = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    let pos = code::read_uint16(ins, ip + 1) as usize;
                     self.set_pointer(pos-1);
                 },
                 Some(OpCode::JumpIfNotTruthy) => {
-                    let pos = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    let pos = code::read_uint16(ins, ip + 1) as usize;
                     self.increment_pointer(2);
 
                     let condition = self.pop()?;
@@ -136,7 +158,7 @@ impl Vm {
                     self.push(Rc::new(NULL))?;
                 },
                 Some(OpCode::SetGlobal) => {
-                    let global_index = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    let global_index = code::read_uint16(ins, ip + 1) as usize;
                     self.increment_pointer(2);
 
                     let popped = self.pop()?;
@@ -148,14 +170,14 @@ impl Vm {
                     }
                 },
                 Some(OpCode::GetGlobal) => {
-                    let global_index = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    let global_index = code::read_uint16(ins, ip + 1) as usize;
                     self.increment_pointer(2);
 
                     let global = Rc::clone(&self.globals.borrow()[global_index]);
                     self.push(global)?;
                 },
                 Some(OpCode::Array) => {
-                    let array_size = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    let array_size = code::read_uint16(ins, ip + 1) as usize;
                     self.increment_pointer(2);
                     
                     let mut items = Vec::with_capacity(array_size);
@@ -166,7 +188,7 @@ impl Vm {
                     self.push(Rc::new(Object::Array(items)))?;
                 },
                 Some(OpCode::Hash) => {
-                    let hash_size = code::read_uint16(&self.instructions, self.ins_pointer + 1) as usize;
+                    let hash_size = code::read_uint16(ins, ip + 1) as usize;
                     self.increment_pointer(2);
                     
                     let mut items = HashMap::with_capacity(hash_size);
@@ -215,8 +237,52 @@ impl Vm {
                             )));
                         }
                     }
+                },
+                Some(OpCode::Call) => {
+                    let nums_args = ins[ip+1] as usize;
+                    self.increment_pointer(1);
+                    self.execute_call(nums_args)?;
+                    continue;
+                },
+                Some(OpCode::ReturnValue) => {
+                    let returned = self.pop()?;
+
+                    let base_pointer = self.pop_frame().base_pointer;
+                    // Remove local bindings and the executed function.
+                    self.stack_pointer = base_pointer - 1;
+
+                    self.push(returned)?;
                 }
-                _ => return Err(VmError::UnknownOpCode(self.instructions[self.ins_pointer]))
+                Some(OpCode::Return) => {
+                    let base_pointer = self.pop_frame().base_pointer;
+                    self.stack_pointer = base_pointer - 1;
+
+                    self.push(Rc::new(NULL))?;
+                },
+                Some(OpCode::Closure) => {
+                    let const_index = code::read_uint16(ins, ip + 1) as usize;
+                    let num_frees = ins[ip+3] as usize;
+                    self.increment_pointer(3);
+
+                    let len = self.constants.len();
+                    if const_index >= len {
+                        return Err(VmError::InvalidConstIndex(const_index, len))
+                    }
+
+                    let constant = self.constants[const_index].clone();
+                    if let Constant::CompiledFunction(cf) = constant {
+                        let mut free = Vec::with_capacity(num_frees);
+                        for _ in 0..num_frees {
+                            free.push(Rc::clone(&self.pop()?));
+                        }
+                        free.reverse();
+                        let closure = Closure { func: cf, free };
+                        self.push(Rc::new(Object::Closure(closure)))?;
+                    } else {
+                        return Err(VmError::NotFunction(constant));
+                    }
+                }
+                _ => return Err(VmError::UnknownOpCode(op_code_byte))
             }
             self.increment_pointer(1);
         }
@@ -375,12 +441,49 @@ impl Vm {
         }
     }
 
+    fn execute_call(&mut self, num_args: usize) -> Result<(), VmError>{
+        let caller = (*self.stack[self.stack_pointer - num_args - 1]).clone();
+        match caller {
+            Object::Closure(closure) => self.call_closure(closure, num_args),
+            obj => Err(VmError::Eval(EvalError::NotCallable(obj)))
+        }
+    }
+
+    fn call_closure(&mut self, closure: Closure, num_args: usize) -> Result<(), VmError> {
+        if closure.func.num_parameters as usize != num_args {
+            return Err(VmError::Eval(EvalError::WrongArgumentCount {
+                expected: closure.func.num_parameters as usize,
+                given: num_args,
+            }));
+        }
+
+        let num_locals = closure.func.num_locals as usize;
+        let base_pointer = self.stack_pointer - num_args;
+        self.push_frame(Frame::new(closure, base_pointer));
+        self.stack_pointer = base_pointer + num_locals;
+        Ok(())
+    }
+
+    fn current_frame(&self) -> &Frame {
+        &self.frames[self.frames_index-1]
+    }
+
     fn set_pointer(&mut self, pos: usize) {
-        self.ins_pointer = pos;
+        self.frames[self.frames_index-1].ip = pos;
     }
 
     fn increment_pointer(&mut self, increment: usize) {
-        self.ins_pointer += increment;
+        self.frames[self.frames_index-1].ip += increment;
+    }
+
+    fn push_frame(&mut self, frame: Frame) {
+        self.frames.push(frame);
+        self.frames_index += 1;
+    }
+
+    fn pop_frame(&mut self) -> Frame {
+        self.frames_index -= 1;
+        self.frames.pop().expect("empty frames")
     }
 }
 
@@ -440,7 +543,6 @@ mod tests {
                 panic!("error on compile for `{}`: {}", input, err);
             }
         };
-        println!("ttt {:?}", bytecode.constants);
         Vm::new(bytecode)
     }
 }

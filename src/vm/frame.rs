@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::{object::{Closure, Object}, code::Instructions};
 
+#[derive(Debug)]
 pub struct Frame {
     closure: Closure,
     pub ip: usize,
