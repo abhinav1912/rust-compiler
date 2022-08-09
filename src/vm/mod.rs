@@ -281,6 +281,22 @@ impl Vm {
                     } else {
                         return Err(VmError::NotFunction(constant));
                     }
+                },
+                Some(OpCode::SetLocal) => {
+                    let local_index = ins[ip + 1] as usize;
+                    self.increment_pointer(1);
+
+                    let popped = self.pop()?;
+                    let pointer = self.current_frame().base_pointer;
+                    self.stack[pointer + local_index] = popped;
+                },
+                Some(OpCode::GetLocal) => {
+                    let local_index = ins[ip + 1] as usize;
+                    self.increment_pointer(1);
+                    
+                    let base_pointer = self.current_frame().base_pointer;
+                    let local = Rc::clone(&self.stack[base_pointer + local_index]);
+                    self.push(local)?;
                 }
                 _ => return Err(VmError::UnknownOpCode(op_code_byte))
             }

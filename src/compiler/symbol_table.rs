@@ -41,8 +41,12 @@ impl SymbolTable {
     }
 
     pub fn define(&mut self, name: &str) -> &Symbol {
-        // TODO: Check scope
-        let scope = SymbolScope::Global;
+        let scope: SymbolScope;
+        if self.outers.is_empty() {
+            scope = SymbolScope::Global;
+        } else {
+            scope = SymbolScope::Local;
+        }
         let symbol = Symbol {
             scope,
             index: self.current.num_definitions
@@ -60,5 +64,14 @@ impl SymbolTable {
         } else {
             return None
         }
+    }
+
+    pub fn num_definitions(&self) -> u16 {
+        self.current.num_definitions
+    }
+
+    pub fn push(&mut self) {
+        let outer = mem::replace(&mut self.current, SymbolLayer::new());
+        self.outers.push(outer);
     }
 }

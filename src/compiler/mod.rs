@@ -76,7 +76,9 @@ impl Compiler {
                     SymbolScope::Global => {
                         self.emit_with_operands(OpCode::SetGlobal, OpCode::u16(symbol.index));
                     },
-                    SymbolScope::Local => todo!(),
+                    SymbolScope::Local => {
+                        self.emit_with_operands(OpCode::SetLocal, vec![symbol.index as u8]);
+                    },
                 }
 
             },
@@ -231,10 +233,11 @@ impl Compiler {
                 if !self.last_instruction_is(OpCode::ReturnValue) {
                     self.emit(OpCode::Return);
                 }
+                let num_locals = self.symbol_table.borrow_mut().num_definitions();
                 let ins = self.leave_scope();
                 let compiled_fn = Constant::CompiledFunction(CompiledFunction {
                     instructions: ins,
-                    num_locals: 0,
+                    num_locals: num_locals as u8,
                     num_parameters: num_params as u8,
                 });
                 let const_index = self.add_constant(compiled_fn)?;
@@ -285,7 +288,9 @@ impl Compiler {
             SymbolScope::Global => {
                 self.emit_with_operands(OpCode::GetGlobal, OpCode::u16(symbol.index));
             },
-            SymbolScope::Local => todo!(),
+            SymbolScope::Local => {
+                self.emit_with_operands(OpCode::GetLocal, vec![symbol.index as u8]);
+            },
         }
     }
 
@@ -310,13 +315,11 @@ impl Compiler {
     }
 
     fn enter_scope(&mut self) {
-        let scope = CompilationScope {
-            instructions: vec![],
-            last_instruction: None,
-            previous_instruction: None,
-        };
+        let scope = CompilationScope::new();
         self.scopes.push(scope);
         self.scope_index += 1;
+
+        self.symbol_table.borrow_mut().push();
     }
 
     fn leave_scope(&mut self) -> Instructions {
