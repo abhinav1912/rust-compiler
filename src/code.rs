@@ -2,6 +2,20 @@ use std::{vec, fmt};
 
 pub type Instructions = Vec<u8>;
 
+pub struct ByteCode {
+    pub instructions: Instructions,
+    pub constants: Vec<Constant>,
+}
+
+impl ByteCode {
+    pub fn new(instructions: Instructions, constants: Vec<Constant>) -> Self {
+        ByteCode {
+            instructions,
+            constants,
+        }
+    }
+}
+
 pub fn make(op_code: OpCode) -> Instructions {
     return vec![op_code as u8]
 }

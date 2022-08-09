@@ -1,7 +1,7 @@
 pub mod frame;
 use std::{rc::Rc, fmt, cell::RefCell, collections::HashMap};
 
-use crate::{object::{Object, EvalError, HashKey, Closure}, code::{Instructions, Constant, OpCode, self, CompiledFunction}, compiler::{ByteCode, CompileError}, ast::{Infix, Prefix}};
+use crate::{object::{Object, EvalError, HashKey, Closure, builtin, BuiltinFunction}, code::{Instructions, Constant, OpCode, self, CompiledFunction, ByteCode}, compiler::{CompileError}, ast::{Infix, Prefix}};
 
 use self::frame::Frame;
 
@@ -13,21 +13,15 @@ pub const NULL: Object = Object::Null;
 #[derive(Debug)]
 pub struct Vm {
     pub constants: Vec<Constant>,
-    stack: Vec<Rc<Object>>,
-    globals: Rc<RefCell<Vec<Rc<Object>>>>,
-    stack_pointer: usize,
-    frames: Vec<Frame>,
-    frames_index: usize
-}
 
-#[derive(Debug)]
-pub enum VmError {
-    UnknownOpCode(u8),
-    InvalidConstIndex(usize, usize),
-    StackOverflow,
-    StackEmpty,
-    NotFunction(Constant),
-    Eval(EvalError),
+    stack: Vec<Rc<Object>>,
+    sp: usize, // Stack pointer. Always points to the next value. Top of the stack is stack[sp - 1];
+
+    pub globals: Rc<RefCell<Vec<Rc<Object>>>>,
+
+    frames: Vec<Frame>,
+    // TODO: Is this index necessary?
+    frames_index: usize,
 }
 
 pub fn new_globals() -> Vec<Rc<Object>> {
@@ -50,21 +44,6 @@ fn new_frames(instructions: Instructions) -> Vec<Frame> {
     frames
 }
 
-impl fmt::Display for VmError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            VmError::UnknownOpCode(op_code) => write!(f, "unknown op code: {}", op_code),
-            VmError::InvalidConstIndex(given, length) => {
-                write!(f, "invalid const index: {} / {}", given, length)
-            }
-            VmError::StackOverflow => write!(f, "stack overflow"),
-            VmError::StackEmpty => write!(f, "stack empty"),
-            VmError::NotFunction(con) => write!(f, "not a function: {}", con.type_name()),
-            VmError::Eval(eval_error) => write!(f, "{}", eval_error),
-        }
-    }
-}
-
 impl Vm {
     pub fn new(bytecode: ByteCode) -> Self {
         Vm::new_with_globals_store(bytecode, Rc::new(RefCell::new(new_globals())))
@@ -83,7 +62,7 @@ impl Vm {
         Vm {
             constants: bytecode.constants,
             stack,
-            stack_pointer: 0,
+            sp: 0,
             globals,
             frames: new_frames(bytecode.instructions),
             frames_index: 1,
@@ -98,8 +77,9 @@ impl Vm {
 
             match OpCode::from_byte(op_code_byte) {
                 Some(OpCode::Constant) => {
-                    let const_index = code::read_uint16(ins, ip+1) as usize;
-                    self.increment_pointer(2);
+                    let const_index = code::read_uint16(ins, ip + 1) as usize;
+                    self.increment_ip(2);
+
                     let len = self.constants.len();
                     if const_index < len {
                         let constant = Object::from_constant(&self.constants[const_index]);
@@ -107,32 +87,44 @@ impl Vm {
                     } else {
                         return Err(VmError::InvalidConstIndex(const_index, len));
                     }
-                },
+                }
                 Some(OpCode::Pop) => {
                     self.pop()?;
-                },
-                Some(OpCode::Add) => self.execute_binary_operation(OpCode::Add)?,
-                Some(OpCode::Sub) => self.execute_binary_operation(OpCode::Sub)?,
-                Some(OpCode::Mul) => self.execute_binary_operation(OpCode::Mul)?,
-                Some(OpCode::Div) => self.execute_binary_operation(OpCode::Div)?,
-                Some(OpCode::True) => self.push(Rc::new(Object::Boolean(true)))?,
-                Some(OpCode::False) => self.push(Rc::new(Object::Boolean(false)))?,
-                Some(OpCode::Equal) => self.execute_comparison(OpCode::Equal)?,
-                Some(OpCode::NotEqual) => self.execute_comparison(OpCode::NotEqual)?,
-                Some(OpCode::GreaterThan) => self.execute_comparison(OpCode::GreaterThan)?,
-                Some(OpCode::Bang) => {
-                    let right = self.pop()?;
-                    self.push(Rc::new(Object::Boolean(!right.is_truthy())))?;
-                },
+                }
+                Some(OpCode::Add) => {
+                    self.execute_binary_operation(OpCode::Add)?;
+                }
+                Some(OpCode::Sub) => {
+                    self.execute_binary_operation(OpCode::Sub)?;
+                }
+                Some(OpCode::Mul) => {
+                    self.execute_binary_operation(OpCode::Mul)?;
+                }
+                Some(OpCode::Div) => {
+                    self.execute_binary_operation(OpCode::Div)?;
+                }
+                Some(OpCode::True) => {
+                    self.push(Rc::new(Object::Boolean(true)))?;
+                }
+                Some(OpCode::False) => {
+                    self.push(Rc::new(Object::Boolean(false)))?;
+                }
+                Some(OpCode::Equal) => {
+                    self.execute_comparison(OpCode::Equal)?;
+                }
+                Some(OpCode::NotEqual) => {
+                    self.execute_comparison(OpCode::NotEqual)?;
+                }
+                Some(OpCode::GreaterThan) => {
+                    self.execute_comparison(OpCode::GreaterThan)?;
+                }
                 Some(OpCode::Minus) => {
                     let right = self.pop()?;
                     match &*right {
                         Object::Integer(value) => {
                             self.push(Rc::new(Object::Integer(-value)))?;
-                        },
-                        Object::Float(value) => {
-                            self.push(Rc::new(Object::Float(-value)))?;
-                        },
+                        }
+                        Object::Float(value) => self.push(Rc::new(Object::Float(-value)))?,
                         obj => {
                             return Err(VmError::Eval(EvalError::UnknownPrefixOperator(
                                 Prefix::Minus,
@@ -140,26 +132,40 @@ impl Vm {
                             )));
                         }
                     }
-                },
-                Some(OpCode::Jump) => {
-                    let pos = code::read_uint16(ins, ip + 1) as usize;
-                    self.set_pointer(pos-1);
-                },
+                }
+                Some(OpCode::Bang) => {
+                    let right = self.pop()?;
+                    self.push(Rc::new(Object::Boolean(!right.is_truthy())))?;
+                }
                 Some(OpCode::JumpIfNotTruthy) => {
                     let pos = code::read_uint16(ins, ip + 1) as usize;
-                    self.increment_pointer(2);
+                    self.increment_ip(2);
 
                     let condition = self.pop()?;
                     if !condition.is_truthy() {
-                        self.set_pointer(pos-1);
+                        // `pos - 1` because `ip` will be incremented later.
+                        self.set_ip(pos - 1);
                     }
-                },
+                }
+                Some(OpCode::Jump) => {
+                    let pos = code::read_uint16(ins, ip + 1) as usize;
+                    // `pos - 1` because `ip` will be incremented later.
+                    self.set_ip(pos - 1);
+                }
                 Some(OpCode::Null) => {
+                    // TODO: This `Rc` is not neccessary because NULL is a constant...
                     self.push(Rc::new(NULL))?;
-                },
+                }
+                Some(OpCode::GetGlobal) => {
+                    let global_index = code::read_uint16(ins, ip + 1) as usize;
+                    self.increment_ip(2);
+
+                    let global = Rc::clone(&self.globals.borrow()[global_index]);
+                    self.push(global)?;
+                }
                 Some(OpCode::SetGlobal) => {
                     let global_index = code::read_uint16(ins, ip + 1) as usize;
-                    self.increment_pointer(2);
+                    self.increment_ip(2);
 
                     let popped = self.pop()?;
                     let mut globals = self.globals.borrow_mut();
@@ -168,107 +174,139 @@ impl Vm {
                     } else {
                         globals[global_index] = popped;
                     }
-                },
-                Some(OpCode::GetGlobal) => {
-                    let global_index = code::read_uint16(ins, ip + 1) as usize;
-                    self.increment_pointer(2);
-
-                    let global = Rc::clone(&self.globals.borrow()[global_index]);
-                    self.push(global)?;
-                },
+                }
                 Some(OpCode::Array) => {
-                    let array_size = code::read_uint16(ins, ip + 1) as usize;
-                    self.increment_pointer(2);
-                    
-                    let mut items = Vec::with_capacity(array_size);
-                    for _ in 0..array_size {
+                    let size = code::read_uint16(ins, ip + 1) as usize;
+                    self.increment_ip(2);
+
+                    let mut items = Vec::with_capacity(size);
+                    for _ in 0..size {
+                        // TODO: Don't clone an object from Rc!
                         items.push((*self.pop()?).clone());
                     }
                     items.reverse();
+
                     self.push(Rc::new(Object::Array(items)))?;
-                },
+                }
                 Some(OpCode::Hash) => {
-                    let hash_size = code::read_uint16(ins, ip + 1) as usize;
-                    self.increment_pointer(2);
-                    
-                    let mut items = HashMap::with_capacity(hash_size);
-                    for _ in 0..hash_size {
+                    let size = code::read_uint16(ins, ip + 1) as usize;
+                    self.increment_ip(2);
+
+                    let mut items = HashMap::with_capacity(size);
+                    for _ in 0..size {
+                        // TODO: Don't clone an object from Rc!
                         let value = (*self.pop()?).clone();
                         let key = HashKey::from_object(&*self.pop()?)
                             .or_else(|e| Err(VmError::Eval(e)))?;
                         items.insert(key, value);
                     }
+
                     self.push(Rc::new(Object::Hash(items)))?;
-                },
+                }
                 Some(OpCode::Index) => {
                     let index = self.pop()?;
-                    let object = self.pop()?;
-                    match &*object {
+                    let obj = self.pop()?;
+
+                    match &*obj {
                         Object::Array(values) => {
                             if let Object::Integer(i) = &*index {
+                                // TODO: Don't clone!
                                 let item = values.get(*i as usize).unwrap_or(&NULL).clone();
                                 self.push(Rc::new(item))?;
                             } else {
                                 return Err(VmError::Eval(EvalError::UnknownIndexOperator(
-                                    (*object).clone(),
+                                    (*obj).clone(),
                                     (*index).clone(),
                                 )));
                             }
-                        },
+                        }
                         Object::Hash(hash) => {
                             let key = match &*index {
-                                Object::Integer(i) => HashKey::Integer(*i),
-                                Object::String(s) => HashKey::String(s.clone()),
-                                Object::Boolean(b) => HashKey::Boolean(*b),
+                                Object::Integer(value) => HashKey::Integer(*value),
+                                // TODO Don't clone!
+                                Object::String(value) => HashKey::String(value.clone()),
+                                Object::Boolean(value) => HashKey::Boolean(*value),
                                 _ => {
                                     return Err(VmError::Eval(EvalError::UnknownIndexOperator(
-                                        (*object).clone(),
+                                        (*obj).clone(),
                                         (*index).clone(),
                                     )));
                                 }
                             };
                             let value = hash.get(&key).unwrap_or(&NULL);
                             self.push(Rc::new(value.clone()))?;
-                        },
+                        }
                         _ => {
                             return Err(VmError::Eval(EvalError::UnknownIndexOperator(
-                                (*object).clone(),
+                                (*obj).clone(),
                                 (*index).clone(),
                             )));
                         }
                     }
-                },
+                }
                 Some(OpCode::Call) => {
-                    let nums_args = ins[ip+1] as usize;
-                    self.increment_pointer(1);
-                    self.execute_call(nums_args)?;
+                    let num_args = ins[ip + 1] as usize;
+                    self.increment_ip(1);
+
+                    self.execute_call(num_args)?;
+                    // `continue` to avoid incrementing `self.current_frame().ip` because we want
+                    // to start with the first instruction in the frame.
                     continue;
-                },
+                }
                 Some(OpCode::ReturnValue) => {
                     let returned = self.pop()?;
 
                     let base_pointer = self.pop_frame().base_pointer;
                     // Remove local bindings and the executed function.
-                    self.stack_pointer = base_pointer - 1;
+                    self.sp = base_pointer - 1;
 
                     self.push(returned)?;
                 }
                 Some(OpCode::Return) => {
                     let base_pointer = self.pop_frame().base_pointer;
-                    self.stack_pointer = base_pointer - 1;
+                    self.sp = base_pointer - 1;
 
                     self.push(Rc::new(NULL))?;
-                },
+                }
+                Some(OpCode::SetLocal) => {
+                    let local_index = ins[ip + 1] as usize;
+                    self.increment_ip(1);
+
+                    let popped = self.pop()?;
+
+                    let base_pointer = self.current_frame().base_pointer;
+                    self.stack[base_pointer + local_index] = popped;
+                }
+                Some(OpCode::GetLocal) => {
+                    let local_index = ins[ip + 1] as usize;
+                    self.increment_ip(1);
+
+                    let base_pointer = self.current_frame().base_pointer;
+
+                    let local = Rc::clone(&self.stack[base_pointer + local_index]);
+                    self.push(local)?;
+                }
+                Some(OpCode::GetBuiltin) => {
+                    let builtin_index = ins[ip + 1] as usize;
+                    self.increment_ip(1);
+
+                    let builtin_function =
+                        Rc::new(builtin::BUILTINS[builtin_index].builtin.clone());
+
+                    self.push(builtin_function)?;
+                }
                 Some(OpCode::Closure) => {
                     let const_index = code::read_uint16(ins, ip + 1) as usize;
-                    let num_frees = ins[ip+3] as usize;
-                    self.increment_pointer(3);
+                    let num_frees = ins[ip + 3] as usize;
+                    self.increment_ip(3);
 
                     let len = self.constants.len();
                     if const_index >= len {
-                        return Err(VmError::InvalidConstIndex(const_index, len))
+                        return Err(VmError::InvalidConstIndex(const_index, len));
                     }
 
+                    // TODO: How can I remove this `clone()`?
+                    // Otherwise the compiler complains about `&self.pop()`.
                     let constant = self.constants[const_index].clone();
                     if let Constant::CompiledFunction(cf) = constant {
                         let mut free = Vec::with_capacity(num_frees);
@@ -276,51 +314,30 @@ impl Vm {
                             free.push(Rc::clone(&self.pop()?));
                         }
                         free.reverse();
+
                         let closure = Closure { func: cf, free };
                         self.push(Rc::new(Object::Closure(closure)))?;
                     } else {
                         return Err(VmError::NotFunction(constant));
                     }
-                },
-                Some(OpCode::SetLocal) => {
-                    let local_index = ins[ip + 1] as usize;
-                    self.increment_pointer(1);
-
-                    let popped = self.pop()?;
-                    let pointer = self.current_frame().base_pointer;
-                    self.stack[pointer + local_index] = popped;
-                },
-                Some(OpCode::GetLocal) => {
-                    let local_index = ins[ip + 1] as usize;
-                    self.increment_pointer(1);
-                    
-                    let base_pointer = self.current_frame().base_pointer;
-                    let local = Rc::clone(&self.stack[base_pointer + local_index]);
-                    self.push(local)?;
                 }
-                _ => return Err(VmError::UnknownOpCode(op_code_byte))
+                Some(OpCode::GetFree) => {
+                    let free_index = ins[ip + 1] as usize;
+                    self.increment_ip(1);
+
+                    let free = self.current_frame().free_at(free_index);
+                    self.push(free)?;
+                }
+                None => {
+                    return Err(VmError::UnknownOpCode(op_code_byte));
+                }
             }
-            self.increment_pointer(1);
+            self.increment_ip(1);
         }
         self.stack
-            .get(self.stack_pointer)
+            .get(self.sp)
             .map(|o| Rc::clone(o))
             .ok_or(VmError::StackEmpty)
-    }
-
-    fn push(&mut self, obj: Rc<Object>) -> Result<(), VmError> {
-        if self.stack_pointer >= STACK_SIZE {
-            return Err(VmError::StackOverflow);
-        }
-        self.stack[self.stack_pointer] = obj;
-        self.stack_pointer += 1;
-        Ok(())
-    }
-
-    fn pop(&mut self) -> Result<Rc<Object>, VmError> {
-        let popped = self.stack.get(self.stack_pointer - 1);
-        self.stack_pointer -= 1;
-        popped.map(|o| Rc::clone(o)).ok_or(VmError::StackEmpty)
     }
 
     fn execute_binary_operation(&mut self, op_code: OpCode) -> Result<(), VmError> {
@@ -329,19 +346,19 @@ impl Vm {
         match (&*left, &*right) {
             (Object::Integer(l), Object::Integer(r)) => {
                 self.execute_integer_binary_operation(op_code, *l, *r)
-            },
+            }
             (Object::Integer(l), Object::Float(r)) => {
                 self.execute_float_binary_operation(op_code, *l as f64, *r)
-            },
+            }
             (Object::Float(l), Object::Integer(r)) => {
                 self.execute_float_binary_operation(op_code, *l, *r as f64)
-            },
+            }
             (Object::Float(l), Object::Float(r)) => {
-                self.execute_float_binary_operation(op_code, *l as f64, *r)
-            },
+                self.execute_float_binary_operation(op_code, *l, *r)
+            }
             (Object::String(l), Object::String(r)) => {
-                self.execute_binary_string_operation(op_code, l, r)
-            },
+                self.execute_string_binary_operation(op_code, l, r)
+            }
             (l, r) => {
                 let infix = infix_from_op_code(op_code).expect("not binary operation");
                 Err(VmError::Eval(EvalError::TypeMismatch(
@@ -377,7 +394,7 @@ impl Vm {
         &mut self,
         op_code: OpCode,
         left: f64,
-        right: f64
+        right: f64,
     ) -> Result<(), VmError> {
         let result = match op_code {
             OpCode::Add => left + right,
@@ -389,14 +406,15 @@ impl Vm {
                 panic!("not integer binary operation: {:?}", op_code);
             }
         };
+
         self.push(Rc::new(Object::Float(result)))
     }
 
-    fn execute_binary_string_operation(
+    fn execute_string_binary_operation(
         &mut self,
         op_code: OpCode,
         left: &str,
-        right: &str
+        right: &str,
     ) -> Result<(), VmError> {
         match op_code {
             OpCode::Add => {
@@ -411,6 +429,7 @@ impl Vm {
                 )))
             }
             _ => {
+                // This happens only when this vm is wrong.
                 panic!("not string binary operation: {:?}", op_code);
             }
         }
@@ -427,10 +446,18 @@ impl Vm {
                     OpCode::NotEqual => self.push(Rc::new(Object::Boolean(l != r))),
                     OpCode::GreaterThan => self.push(Rc::new(Object::Boolean(l > r))),
                     _ => {
+                        // This happens only when this vm is wrong.
                         panic!("unknown operator: {:?}", op_code);
                     }
                 }
-            },
+            }
+            (Object::Integer(l), Object::Float(r)) => {
+                self.execute_float_comparison(op_code, *l as f64, *r)
+            }
+            (Object::Float(l), Object::Integer(r)) => {
+                self.execute_float_comparison(op_code, *l, *r as f64)
+            }
+            (Object::Float(l), Object::Float(r)) => self.execute_float_comparison(op_code, *l, *r),
             (Object::Boolean(l), Object::Boolean(r)) => {
                 match op_code {
                     OpCode::Equal => self.push(Rc::new(Object::Boolean(l == r))),
@@ -457,15 +484,38 @@ impl Vm {
         }
     }
 
-    fn execute_call(&mut self, num_args: usize) -> Result<(), VmError>{
-        let caller = (*self.stack[self.stack_pointer - num_args - 1]).clone();
-        match caller {
-            Object::Closure(closure) => self.call_closure(closure, num_args),
-            obj => Err(VmError::Eval(EvalError::NotCallable(obj)))
+    #[allow(clippy::float_cmp)]
+    fn execute_float_comparison(&mut self, op_code: OpCode, l: f64, r: f64) -> Result<(), VmError> {
+        match op_code {
+            OpCode::Equal => self.push(Rc::new(Object::Boolean(l == r))),
+            OpCode::NotEqual => self.push(Rc::new(Object::Boolean(l != r))),
+            OpCode::GreaterThan => self.push(Rc::new(Object::Boolean(l > r))),
+            _ => {
+                // This happens only when this vm is wrong.
+                panic!("unknown operator: {:?}", op_code);
+            }
         }
     }
 
-    fn call_closure(&mut self, closure: Closure, num_args: usize) -> Result<(), VmError> {
+    fn execute_call(&mut self, num_args: usize) -> Result<(), VmError> {
+        // TODO: Don't clone...
+        let callee = (*self.stack[self.sp - num_args - 1]).clone();
+        match callee {
+            Object::Closure(closure) => self.call_closure(num_args, closure),
+            Object::Builtin(func) => self.call_builtin(num_args, func),
+            obj => Err(VmError::Eval(EvalError::NotCallable(obj))),
+        }
+    }
+
+    // When there are two arguments:
+    //
+    // sp --> |          | <-- base_pointer + 2
+    //        |   arg 2  | <-- base_pointer + 1
+    //        |   arg 1  | <-- base_pointer
+    //        | function |
+    //        |   ....   |
+    //
+    fn call_closure(&mut self, num_args: usize, closure: Closure) -> Result<(), VmError> {
         if closure.func.num_parameters as usize != num_args {
             return Err(VmError::Eval(EvalError::WrongArgumentCount {
                 expected: closure.func.num_parameters as usize,
@@ -474,22 +524,66 @@ impl Vm {
         }
 
         let num_locals = closure.func.num_locals as usize;
-        let base_pointer = self.stack_pointer - num_args;
+        let base_pointer = self.sp - num_args;
+        // Keep the stack pointer to come back after calling the function.
         self.push_frame(Frame::new(closure, base_pointer));
-        self.stack_pointer = base_pointer + num_locals;
+
+        // Reserve space for local bindings.
+        // `num_locals` includes `num_args` in itself.
+        self.sp = base_pointer + num_locals;
         Ok(())
     }
 
+    fn call_builtin(&mut self, num_args: usize, func: BuiltinFunction) -> Result<(), VmError> {
+        let mut args = Vec::with_capacity(num_args);
+        for _ in 0..num_args {
+            let arg = self.pop()?;
+            // TODO: Don't clone!
+            args.push((*arg).clone());
+        }
+        args.reverse();
+
+        let _function = self.pop()?;
+
+        match func(args) {
+            Ok(result) => {
+                self.push(Rc::new(result))?;
+            }
+            Err(error) => {
+                return Err(VmError::Eval(error));
+            }
+        }
+
+        self.increment_ip(1);
+
+        Ok(())
+    }
+
+    fn push(&mut self, obj: Rc<Object>) -> Result<(), VmError> {
+        if self.sp >= STACK_SIZE {
+            return Err(VmError::StackOverflow);
+        }
+        self.stack[self.sp] = obj;
+        self.sp += 1;
+        Ok(())
+    }
+
+    fn pop(&mut self) -> Result<Rc<Object>, VmError> {
+        let popped = self.stack.get(self.sp - 1);
+        self.sp -= 1;
+        popped.map(|o| Rc::clone(o)).ok_or(VmError::StackEmpty)
+    }
+
     fn current_frame(&self) -> &Frame {
-        &self.frames[self.frames_index-1]
+        &self.frames[self.frames_index - 1]
     }
 
-    fn set_pointer(&mut self, pos: usize) {
-        self.frames[self.frames_index-1].ip = pos;
+    fn increment_ip(&mut self, diff: usize) {
+        self.frames[self.frames_index - 1].ip += diff;
     }
 
-    fn increment_pointer(&mut self, increment: usize) {
-        self.frames[self.frames_index-1].ip += increment;
+    fn set_ip(&mut self, to: usize) {
+        self.frames[self.frames_index - 1].ip = to;
     }
 
     fn push_frame(&mut self, frame: Frame) {
@@ -516,49 +610,27 @@ fn infix_from_op_code(op_code: OpCode) -> Option<Infix> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{lexer::Lexer, parser::Parser, compiler::Compiler};
+#[derive(Debug)]
+pub enum VmError {
+    UnknownOpCode(u8),
+    InvalidConstIndex(usize, usize),
+    StackOverflow,
+    StackEmpty,
+    NotFunction(Constant),
+    Eval(EvalError),
+}
 
-    use super::Vm;
-
-    #[test]
-    fn integer() {
-        expect_values(vec![
-            ("1", "1"),
-        ]);
-    }
-
-    fn expect_values(tests: Vec<(&str, &str)>) {
-        for (input, expected) in tests {
-            let vm = make_vm(input);
-            match vm.run() {
-                Ok(obj) => {
-                    assert_eq!(&obj.to_string(), expected, "for `{}`", input);
-                }
-                Err(err) => {
-                    panic!("error on vm for `{}`: {}", input, err);
-                }
+impl fmt::Display for VmError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            VmError::UnknownOpCode(op_code) => write!(f, "unknown op code: {}", op_code),
+            VmError::InvalidConstIndex(given, length) => {
+                write!(f, "invalid const index: {} / {}", given, length)
             }
+            VmError::StackOverflow => write!(f, "stack overflow"),
+            VmError::StackEmpty => write!(f, "stack empty"),
+            VmError::NotFunction(con) => write!(f, "not a function: {}", con.type_name()),
+            VmError::Eval(eval_error) => write!(f, "{}", eval_error),
         }
-    }
-
-    fn make_vm(input: &str) -> Vm {
-        let lexer = Lexer::new(input.to_owned());
-        let mut parser = Parser::new_parser(lexer);
-        let program = parser.parse_program();
-        let errors = parser.errors;
-        if errors.len() > 0 {
-            panic!("for input '{}', got parser errors: {:?}", input, errors);
-        }
-
-        let compiler = Compiler::new();
-        let bytecode = match compiler.compile(&program) {
-            Ok(bytecode) => bytecode,
-            Err(err) => {
-                panic!("error on compile for `{}`: {}", input, err);
-            }
-        };
-        Vm::new(bytecode)
     }
 }
